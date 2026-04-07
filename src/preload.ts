@@ -27,14 +27,26 @@ contextBridge.exposeInMainWorld('api', {
   onToolCall: (cb: (event: unknown) => void) => {
     ipcRenderer.on('agent:toolCall', (_e, event) => cb(event));
   },
+  onToolCallStart: (cb: (event: unknown) => void) => {
+    ipcRenderer.on('agent:toolCallStart', (_e, event) => cb(event));
+  },
+  onReasoning: (cb: (text: string) => void) => {
+    ipcRenderer.on('agent:reasoning', (_e, text) => cb(text));
+  },
+  onTextStart: (cb: () => void) => {
+    ipcRenderer.on('agent:textStart', () => cb());
+  },
   onDone: (cb: () => void) => {
     ipcRenderer.on('agent:done', () => cb());
   },
   offAgentEvents: () => {
     ipcRenderer.removeAllListeners('agent:token');
     ipcRenderer.removeAllListeners('agent:toolCall');
+    ipcRenderer.removeAllListeners('agent:toolCallStart');
+    ipcRenderer.removeAllListeners('agent:reasoning');
     ipcRenderer.removeAllListeners('agent:done');
     ipcRenderer.removeAllListeners('agent:fileProgress');
+    ipcRenderer.removeAllListeners('agent:textStart');
   },
   onPreviewFile: (cb: (data: { type: string; fileName: string; filePath: string }) => void) => {
     ipcRenderer.on('file:preview', (_e, data) => cb(data));
@@ -113,4 +125,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Plugins
   listPlugins: () => ipcRenderer.invoke('plugins:list'),
+
+  // Logs
+  exportLogs: () => ipcRenderer.invoke('system:exportLogs'),
 });

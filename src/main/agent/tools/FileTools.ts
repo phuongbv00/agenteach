@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { BrowserWindow, ipcMain } from 'electron';
 import mammoth from 'mammoth';
 import pdf2md from '@opendocsg/pdf2md';
-import TurndownService from 'turndown';
+import { NodeHtmlMarkdown } from 'node-html-markdown';
 import { FileCache } from '../FileCache';
 import { PermissionManager } from '../PermissionManager';
 import type { Workspace } from '../../workspace/WorkspaceManager';
@@ -34,7 +34,7 @@ export async function requestHitl(
   });
 }
 
-const turndown = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+const nhm = new NodeHtmlMarkdown({ bulletMarker: '-' });
 
 const PARSED_EXTS = new Set(['.docx', '.pdf']);
 
@@ -57,7 +57,7 @@ async function readFileContent(
   if (ext === '.docx') {
     onProgress('parsing');
     const result = await mammoth.convertToHtml({ path: filePath });
-    content = turndown.turndown(result.value);
+    content = nhm.translate(result.value);
   } else {
     const buffer = fs.readFileSync(filePath);
     onProgress('parsing');

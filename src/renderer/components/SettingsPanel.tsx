@@ -38,7 +38,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'connection' | 'memory';
+type Tab = 'connection' | 'memory' | 'support';
 
 const EMPTY_PROVIDER: AIProvider = { id: '', name: '', baseUrl: 'http://localhost:11434/v1', apiKey: '' };
 
@@ -152,9 +152,22 @@ export default function SettingsPanel({ onClose }: Props) {
     setTimeout(() => setMemSaved(false), 2000);
   };
 
+  const [exporting, setExporting] = useState(false);
+  const [exportResult, setExportResult] = useState<'ok' | 'cancel' | null>(null);
+
+  const handleExportLogs = async () => {
+    setExporting(true);
+    setExportResult(null);
+    const ok = await window.api.exportLogs();
+    setExportResult(ok ? 'ok' : 'cancel');
+    setExporting(false);
+    setTimeout(() => setExportResult(null), 3000);
+  };
+
   const TAB_LABELS: Record<Tab, string> = {
     connection: '🔌 Kết nối AI',
     memory: '🧠 Bộ nhớ',
+    support: '🛟 Hỗ trợ',
   };
 
   return (
@@ -289,6 +302,29 @@ export default function SettingsPanel({ onClose }: Props) {
                 </button>
               </div>
             </>
+          )}
+
+          {/* ── Tab: Support ── */}
+          {tab === 'support' && (
+            <div className="space-y-4">
+              <div className="border rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-700">Logs ứng dụng</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  File log ghi lại toàn bộ hoạt động của ứng dụng (main process, renderer, lỗi). Gửi file này khi báo lỗi để được hỗ trợ nhanh hơn.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleExportLogs}
+                    disabled={exporting}
+                    className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-900 text-white rounded-xl disabled:opacity-50 transition-colors"
+                  >
+                    {exporting ? 'Đang xuất...' : 'Tải xuống logs'}
+                  </button>
+                  {exportResult === 'ok' && <span className="text-xs text-green-600">✓ Đã lưu file</span>}
+                  {exportResult === 'cancel' && <span className="text-xs text-gray-400">Đã huỷ</span>}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ── Tab: Memory ── */}

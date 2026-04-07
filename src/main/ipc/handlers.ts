@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { ipcMain, dialog, BrowserWindow, shell } from 'electron';
+import { logFilePath } from '../utils/logger';
 import mammoth from 'mammoth';
 import { appConfig } from '../config/AppConfig';
 import { checkProviderHealth, listModels } from '../llm/LLMClient';
@@ -176,5 +177,19 @@ export function registerHandlers(win: BrowserWindow): void {
     const { activeWorkspaceId } = appConfig.get();
     const ws = activeWorkspaceId ? WorkspaceManager.get(activeWorkspaceId) : null;
     return PluginLoader.load(ws?.path);
+  });
+
+  // Logs
+  ipcMain.handle('system:exportLogs', async () => {
+    const src = logFilePath();
+    const { filePath, canceled } = await dialog.showSaveDialog(win, {
+      title: 'Lưu file log',
+      defaultPath: 'agenteach-logs.log',
+      filters: [{ name: 'Log files', extensions: ['log', 'txt'] }],
+    });
+    if (canceled || !filePath) return false;
+    fs.copyFileSync(src, filePath);
+    shell.showItemInFolder(filePath);
+    return true;
   });
 }

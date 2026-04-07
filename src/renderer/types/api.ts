@@ -69,7 +69,8 @@ export interface ChatMessage {
 
 export type StoredChatItem =
   | { type: 'user_message'; content: string }
-  | { type: 'assistant_message'; thinking?: string; content: string }
+  | { type: 'assistant_message'; content: string }
+  | { type: 'reasoning_block'; content: string }
   | { type: 'tool_call'; toolName: string; label: string; args: Record<string, unknown>; result: string };
 
 export interface Artifact {
@@ -109,6 +110,9 @@ declare global {
       cancelMessage(): Promise<void>;
       onToken(cb: (token: string) => void): void;
       onToolCall(cb: (event: ToolCallEvent) => void): void;
+      onToolCallStart(cb: (event: Omit<ToolCallEvent, 'result'>) => void): void;
+      onReasoning(cb: (text: string) => void): void;
+      onTextStart(cb: () => void): void;
       onDone(cb: () => void): void;
       onFileProgress(cb: (info: { fileName: string; stage: 'reading' | 'parsing' }) => void): void;
       offAgentEvents(): void;
@@ -153,6 +157,7 @@ declare global {
       openFile(filePath: string): Promise<void>;
 
       listPlugins(): Promise<Plugin[]>;
+      exportLogs(): Promise<boolean>;
     };
   }
 }

@@ -1,3 +1,4 @@
+import './main/utils/logger'; // must be first — hooks console.* before anything else
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { spawn } from 'child_process';

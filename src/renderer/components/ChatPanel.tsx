@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChatStore } from '../stores/chatStore';
 import { useAppStore } from '../stores/appStore';
-import { MessageBubble, StreamingBubble, ToolCallBubble } from './MessageBubble';
+import { MessageBubble, ReasoningBubble, StreamingBubble, ToolCallBubble } from './MessageBubble';
 import type { ToolCallEvent } from '../types/api';
 
 export default function ChatPanel() {
   const {
-    items, isStreaming, streamingContent, pendingItems,
-    addUserMessage, appendToken, addToolCall, finalizeAssistantMessage, setStreaming, toMessages, toStoredItems, loadItems,
+    items, isStreaming, streamingContent, reasoningContent, pendingItems, pendingToolCall, isWaitingForText,
+    addUserMessage, appendToken, appendReasoning, setWaitingForText, addToolCallStart, addToolCall, finalizeAssistantMessage, setStreaming, toMessages, toStoredItems, loadItems,
   } = useChatStore();
   const { activeWorkspace, activeSessionId } = useAppStore();
   const [input, setInput] = useState('');
@@ -17,7 +17,7 @@ export default function ChatPanel() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [items, streamingContent, pendingItems]);
+  }, [items, streamingContent, reasoningContent, pendingItems, isWaitingForText]);
 
   // Save session after each completed turn
   useEffect(() => {
@@ -29,6 +29,9 @@ export default function ChatPanel() {
   useEffect(() => {
     window.api.offAgentEvents();
     window.api.onToken((token) => appendToken(token));
+    window.api.onReasoning((text) => appendReasoning(text));
+    window.api.onTextStart(() => setWaitingForText());
+    window.api.onToolCallStart((event) => { setFileProgress(null); addToolCallStart(event as Omit<ToolCallEvent, 'result'>); });
     window.api.onToolCall((event) => { setFileProgress(null); addToolCall(event as ToolCallEvent); });
     window.api.onDone(() => { setFileProgress(null); finalizeAssistantMessage(); });
     window.api.onFileProgress((info) => setFileProgress(info));
@@ -107,19 +110,28 @@ export default function ChatPanel() {
         )}
 
         {items.map((item, i) => {
-          if (item.type === 'tool_call') {
-            return <ToolCallBubble key={item.id} item={item} />;
-          }
-          return <MessageBubble key={i} message={{ role: item.role, content: item.content, thinking: item.thinking }} />;
+          if (item.type === 'tool_call') return <ToolCallBubble key={item.id} item={item} />;
+          if (item.type === 'reasoning') return <ReasoningBubble key={item.id} item={item} />;
+          return <MessageBubble key={i} message={{ role: item.role, content: item.content }} />;
         })}
 
         {/* Streaming turn */}
         {isStreaming && (
           <>
-            {pendingItems.map((item, i) =>
-              item.type === 'tool_call'
-                ? <ToolCallBubble key={item.id} item={item} />
-                : <MessageBubble key={i} message={{ role: item.role, content: item.content, thinking: item.thinking }} />
+            {pendingItems.map((item, i) => {
+              if (item.type === 'tool_call') return <ToolCallBubble key={item.id} item={item} />;
+              if (item.type === 'reasoning') return <ReasoningBubble key={item.id} item={item} />;
+              return <MessageBubble key={i} message={{ role: item.role, content: item.content }} />;
+            })}
+            {pendingToolCall && (
+              <div className="flex items-center gap-2 text-xs text-gray-400 py-1 mb-1">
+                <span className="inline-flex gap-0.5">
+                  <span className="w-1 h-1 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1 h-1 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1 h-1 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
+                <span>{pendingToolCall.label}</span>
+              </div>
             )}
             {fileProgress && (
               <div className="flex items-center gap-2 text-xs text-gray-400 py-1 mb-1">
@@ -134,7 +146,7 @@ export default function ChatPanel() {
                 </span>
               </div>
             )}
-            <StreamingBubble content={streamingContent} />
+            <StreamingBubble content={streamingContent} reasoning={reasoningContent} isWaitingForText={isWaitingForText} />
           </>
         )}
 
