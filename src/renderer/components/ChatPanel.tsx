@@ -31,12 +31,43 @@ export default function ChatPanel() {
   } = useChatStore();
   const { activeWorkspace, activeSessionId } = useAppStore();
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [models, setModels] = useState<string[]>([]);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [fileProgress, setFileProgress] = useState<{
     fileName: string;
     stage: "reading" | "parsing";
   } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    window.api.getConfig().then((c) => setSelectedModel(c.selectedModel ?? ""));
+    window.api.listModels().then(setModels);
+  }, []);
+
+  useEffect(() => {
+    if (!modelMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        modelBtnRef.current &&
+        !modelBtnRef.current
+          .closest("[data-model-menu]")
+          ?.contains(e.target as Node)
+      ) {
+        setModelMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [modelMenuOpen]);
+
+  const handleSelectModel = async (model: string) => {
+    await window.api.selectModel(model);
+    setSelectedModel(model);
+    setModelMenuOpen(false);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,7 +129,7 @@ export default function ChatPanel() {
 
     const allMessages = [...toMessages(), { role: "user" as const, content }];
     window.api
-      .sendMessage(allMessages, activeSessionId ?? undefined)
+      .sendMessage(allMessages, activeSessionId ?? undefined, selectedModel || undefined)
       .catch(() => finalizeAssistantMessage());
   };
 
@@ -125,22 +156,14 @@ export default function ChatPanel() {
     );
   }
 
-  return (
-    <div className="flex-1 flex flex-col bg-gray-50 min-w-0">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-2.5 flex items-center gap-3 flex-shrink-0">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-800 truncate">
-            {activeWorkspace.name}
-          </p>
-          <p className="text-xs text-gray-400 font-mono truncate">
-            {activeWorkspace.path}
-          </p>
-        </div>
-      </div>
+  const modelLabel = selectedModel
+    ? (selectedModel.split("/").pop() ?? selectedModel)
+    : "Model";
 
+  return (
+    <div className="flex-1 flex flex-col min-w-0 relative">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36">
         {items.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
             <p className="text-5xl">👩‍🏫</p>
@@ -257,40 +280,121 @@ export default function ChatPanel() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="bg-white border-t px-4 py-3 flex-shrink-0">
-        <div className="flex gap-2 items-end">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Nhập yêu cầu... (Enter để gửi, Shift+Enter xuống dòng)"
-            rows={1}
-            style={{ resize: "none" }}
-            className="flex-1 border rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300 max-h-40 overflow-y-auto"
-            onInput={(e) => {
-              const t = e.currentTarget;
-              t.style.height = "auto";
-              t.style.height = `${Math.min(t.scrollHeight, 160)}px`;
-            }}
-          />
-          {isStreaming ? (
-            <button
-              onClick={() => window.api.cancelMessage()}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm transition-colors flex-shrink-0"
-            >
-              Dừng
-            </button>
-          ) : (
-            <button
-              onClick={send}
-              disabled={!input.trim()}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm disabled:opacity-40 transition-colors flex-shrink-0"
-            >
-              Gửi
-            </button>
-          )}
+      {/* Floating input */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none">
+        <div className="max-w-2xl mx-auto pointer-events-auto">
+          <div className="bg-white rounded-lg shadow-lg p-3 border">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Nhập yêu cầu..."
+              rows={1}
+              style={{ resize: "none" }}
+              className="w-full bg-transparent outline-none text-sm text-gray-800 placeholder-gray-400 max-h-40 overflow-y-auto"
+              onInput={(e) => {
+                const t = e.currentTarget;
+                t.style.height = "auto";
+                t.style.height = `${Math.min(t.scrollHeight, 160)}px`;
+              }}
+            />
+            <div className="flex items-end mt-2 gap-2">
+              <button
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                disabled
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+              <div className="flex-1" />
+              <div className="relative" data-model-menu>
+                <button
+                  ref={modelBtnRef}
+                  onClick={() => setModelMenuOpen((o) => !o)}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+                >
+                  <span>{modelLabel}</span>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {modelMenuOpen && (
+                  <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-56 overflow-y-auto z-50">
+                    {models.length === 0 && (
+                      <p className="text-xs text-gray-400 px-3 py-2">
+                        Không có model khả dụng
+                      </p>
+                    )}
+                    {models.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => handleSelectModel(m)}
+                        className={`w-full text-left text-xs px-3 py-2 hover:bg-gray-50 transition-colors truncate ${m === selectedModel ? "text-blue-600 font-medium" : "text-gray-700"}`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {isStreaming ? (
+                <button
+                  onClick={() => window.api.cancelMessage()}
+                  className="w-8 h-8 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex-shrink-0"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <rect x="6" y="6" width="12" height="12" rx="1" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={send}
+                  disabled={!input.trim()}
+                  className="w-8 h-8 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 text-white rounded-lg transition-colors flex-shrink-0"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="12" y1="19" x2="12" y2="5" />
+                    <polyline points="5 12 12 5 19 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

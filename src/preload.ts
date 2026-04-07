@@ -18,8 +18,8 @@ contextBridge.exposeInMainWorld('api', {
   updateConfig: (patch: Record<string, unknown>) => ipcRenderer.invoke('system:updateConfig', patch),
 
   // Agent
-  sendMessage: (messages: { role: string; content: string }[], sessionId?: string) =>
-    ipcRenderer.invoke('agent:sendMessage', messages, sessionId),
+  sendMessage: (messages: { role: string; content: string }[], sessionId?: string, model?: string) =>
+    ipcRenderer.invoke('agent:sendMessage', messages, sessionId, model),
   cancelMessage: () => ipcRenderer.invoke('agent:cancel'),
   onToken: (cb: (token: string) => void) => {
     ipcRenderer.on('agent:token', (_e, token) => cb(token));

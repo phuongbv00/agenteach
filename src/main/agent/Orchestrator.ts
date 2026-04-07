@@ -30,6 +30,7 @@ export async function runAgent(
   messages: ChatMessage[],
   win: BrowserWindow,
   sessionId?: string,
+  model?: string,
 ): Promise<void> {
   currentAbortController = new AbortController();
   const signal = currentAbortController.signal;
@@ -69,7 +70,7 @@ export async function runAgent(
 
   try {
     const result = streamText({
-      model: createModel(config.selectedModel),
+      model: createModel(model ?? config.selectedModel),
       system: systemPrompt,
       messages,
       tools: {

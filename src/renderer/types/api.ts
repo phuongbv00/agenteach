@@ -106,7 +106,7 @@ declare global {
       getConfig(): Promise<AppConfigData>;
       updateConfig(patch: Partial<AppConfigData>): Promise<void>;
 
-      sendMessage(messages: ChatMessage[], sessionId?: string): Promise<void>;
+      sendMessage(messages: ChatMessage[], sessionId?: string, model?: string): Promise<void>;
       cancelMessage(): Promise<void>;
       onToken(cb: (token: string) => void): void;
       onToolCall(cb: (event: ToolCallEvent) => void): void;

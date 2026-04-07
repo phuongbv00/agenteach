@@ -59,8 +59,8 @@ export function registerHandlers(win: BrowserWindow): void {
   });
 
   // Agent
-  ipcMain.handle('agent:sendMessage', async (_e, messages: ChatMessage[], sessionId?: string) => {
-    await runAgent(messages, win, sessionId);
+  ipcMain.handle('agent:sendMessage', async (_e, messages: ChatMessage[], sessionId?: string, model?: string) => {
+    await runAgent(messages, win, sessionId, model);
   });
   ipcMain.handle('agent:cancel', () => cancelAgent());
 

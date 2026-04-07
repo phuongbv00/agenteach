@@ -18,6 +18,35 @@ export default function PreviewPanel({ data, onClose }: Props) {
   const [mdContent, setMdContent] = useState("");
   const [blobUrl, setBlobUrl] = useState("");
   const prevBlobUrl = useRef("");
+  const [width, setWidth] = useState(440);
+  const isResizing = useRef(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    startX.current = e.clientX;
+    startWidth.current = width;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      const delta = startX.current - e.clientX;
+      setWidth(Math.max(280, Math.min(900, startWidth.current + delta)));
+    };
+
+    const onMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
 
   useEffect(() => {
     setLoadState("loading");
@@ -41,7 +70,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
         } else if (data.type === "pdf") {
           const buf = await window.api.readFileBinary(data.filePath);
           if (cancelled) return;
-          const blob = new Blob([buf], { type: "application/pdf" });
+          const blob = new Blob([buf as any], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
           prevBlobUrl.current = url;
           setBlobUrl(url);
@@ -85,7 +114,13 @@ export default function PreviewPanel({ data, onClose }: Props) {
     data.type === "pdf" ? "📄" : data.type === "docx" ? "📝" : "📋";
 
   return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-200 w-[440px] flex-shrink-0">
+    <div className="flex h-full flex-shrink-0" style={{ width }}>
+      {/* Resize handle */}
+      <div
+        onMouseDown={onMouseDown}
+        className="w-1 h-full cursor-col-resize hover:bg-blue-400 transition-colors flex-shrink-0"
+      />
+      <div className="flex flex-col flex-1 bg-white border-l border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <span className="text-base">{typeIcon}</span>
@@ -142,6 +177,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
               title={data.fileName}
             />
           )}
+      </div>
       </div>
     </div>
   );
