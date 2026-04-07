@@ -3,9 +3,12 @@ import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { spawn } from 'child_process';
 import started from 'electron-squirrel-startup';
+import { updateElectronApp } from 'update-electron-app';
 import { registerHandlers } from './main/ipc/handlers';
 
 if (started) app.quit();
+
+updateElectronApp({ repo: 'phuongbv00/agenteach' });
 
 let mainWindow: BrowserWindow | null = null;
 let ollamaProcess: ReturnType<typeof spawn> | null = null;
