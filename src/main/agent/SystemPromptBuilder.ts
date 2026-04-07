@@ -1,42 +1,47 @@
-import type { AllMemory, MemoryLayer } from '../memory/MemoryStore';
-import type { Workspace } from '../workspace/WorkspaceManager';
-import type { Plugin } from '../plugins/PluginLoader';
+import type { AllMemory, MemoryLayer } from "../memory/MemoryStore";
+import type { Workspace } from "../workspace/WorkspaceManager";
+import type { Plugin } from "../plugins/PluginLoader";
 
 function renderLayer(layer: MemoryLayer, includeUser: boolean): string[] {
   const lines: string[] = [];
   if (includeUser) {
     if (layer.user.name) lines.push(`- Tên: ${layer.user.name}`);
     if (layer.user.subject) lines.push(`- Môn dạy: ${layer.user.subject}`);
-    if (layer.user.grades.length) lines.push(`- Lớp: ${layer.user.grades.join(', ')}`);
+    if (layer.user.grades.length)
+      lines.push(`- Lớp: ${layer.user.grades.join(", ")}`);
   }
   for (const [k, v] of Object.entries(layer.style)) {
     lines.push(`- Phong cách ${k}: ${v}`);
   }
-  if (layer.feedback.length) lines.push(`- Lưu ý: ${layer.feedback.join('; ')}`);
-  if (layer.context.length) lines.push(`- Bối cảnh: ${layer.context.join('; ')}`);
+  if (layer.feedback.length)
+    lines.push(`- Lưu ý: ${layer.feedback.join("; ")}`);
+  if (layer.context.length)
+    lines.push(`- Bối cảnh: ${layer.context.join("; ")}`);
   return lines;
 }
 
 export function buildSystemPrompt(
   memory: AllMemory,
   workspace: Workspace,
-  activePlugin: Plugin | null
+  activePlugin: Plugin | null,
 ): string {
   const parts: string[] = [];
 
   parts.push(`[IDENTITY]
 Bạn là trợ lý AI hỗ trợ giáo viên soạn thảo tài liệu giảng dạy.
 Luôn trả lời bằng tiếng Việt, lịch sự và chuyên nghiệp.
-Hôm nay là ${new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`);
+Hôm nay là ${new Date().toLocaleDateString("vi-VN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.`);
 
   const globalLines = renderLayer(memory.global, true);
   if (globalLines.length) {
-    parts.push(`[MEMORY - Toàn cục]\n${globalLines.join('\n')}`);
+    parts.push(`[MEMORY - Toàn cục]\n${globalLines.join("\n")}`);
   }
 
   const wsLines = renderLayer(memory.workspace, false);
   if (wsLines.length) {
-    parts.push(`[MEMORY - Workspace "${workspace.name}"]\n${wsLines.join('\n')}`);
+    parts.push(
+      `[MEMORY - Workspace "${workspace.name}"]\n${wsLines.join("\n")}`,
+    );
   }
 
   parts.push(`[WORKSPACE]
@@ -45,8 +50,8 @@ Workspace: "${workspace.name}"
 
 Quy tắc đường dẫn (BẮT BUỘC):
 - list_directory("") hoặc list_directory(".") → liệt kê workspace root
-- list_directory("HN26_FR_AI_01") → liệt kê subfolder HN26_FR_AI_01
-- read_file("HN26_FR_AI_01/bai1.md") → đọc file bên trong subfolder
+- list_directory("foo") → liệt kê subfolder foo
+- read_file("foo/bai1.md") → đọc file bên trong subfolder
 - KHÔNG dùng tên workspace "${workspace.name}" làm dir_path — đó là tên hiển thị, không phải đường dẫn
 - KHÔNG dùng đường dẫn tuyệt đối /Users/...
 
@@ -97,5 +102,5 @@ Khác:
 5. Nếu một search không tìm thấy, thử từ khóa khác hoặc list_directory trước khi kết luận "không có tài liệu".
 6. BẮT BUỘC: Khi user yêu cầu "soạn", "tạo", "viết", "xuất" một tài liệu — PHẢI gọi create_markdown / create_pdf / create_docx ngay sau khi đã đọc đủ tài liệu nguồn. KHÔNG chỉ đưa nội dung vào response text mà không lưu file.`);
 
-  return parts.join('\n\n');
+  return parts.join("\n\n");
 }

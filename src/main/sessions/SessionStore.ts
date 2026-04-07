@@ -37,15 +37,19 @@ function migrateItems(raw: unknown[]): StoredChatItem[] {
 }
 
 function sessionsDir(workspaceId: string): string {
-  return dataDir('sessions', workspaceId);
+  return dataDir('workspaces', workspaceId, 'sessions');
 }
 
 function indexPath(workspaceId: string): string {
-  return path.join(sessionsDir(workspaceId), '_index.json');
+  return path.join(sessionsDir(workspaceId), 'index.json');
+}
+
+function sessionDir(workspaceId: string, sessionId: string): string {
+  return path.join(sessionsDir(workspaceId), sessionId);
 }
 
 function messagesPath(workspaceId: string, sessionId: string): string {
-  return path.join(sessionsDir(workspaceId), `${sessionId}.json`);
+  return path.join(sessionDir(workspaceId, sessionId), 'messages.json');
 }
 
 export const SessionStore = {
@@ -61,14 +65,13 @@ export const SessionStore = {
 
   create(workspaceId: string, name = 'Phiên mới'): Session {
     const session: Session = {
-      id: generateId(),
+      id: 'SS-' + generateId(),
       workspaceId,
       name,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    const dir = sessionsDir(workspaceId);
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(sessionDir(workspaceId, session.id), { recursive: true });
 
     const existing: Session[] = this.list(workspaceId);
     fs.writeFileSync(indexPath(workspaceId), JSON.stringify([...existing, session], null, 2));
@@ -89,7 +92,7 @@ export const SessionStore = {
   delete(workspaceId: string, sessionId: string): void {
     const sessions = this.list(workspaceId).filter((s: Session) => s.id !== sessionId);
     fs.writeFileSync(indexPath(workspaceId), JSON.stringify(sessions, null, 2));
-    try { fs.unlinkSync(messagesPath(workspaceId, sessionId)); } catch { /* ok */ }
+    try { fs.rmSync(sessionDir(workspaceId, sessionId), { recursive: true, force: true }); } catch { /* ok */ }
   },
 
   loadMessages(workspaceId: string, sessionId: string): StoredChatItem[] {
@@ -102,8 +105,7 @@ export const SessionStore = {
   },
 
   saveMessages(workspaceId: string, sessionId: string, messages: StoredChatItem[]): void {
-    const dir = sessionsDir(workspaceId);
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(sessionDir(workspaceId, sessionId), { recursive: true });
     fs.writeFileSync(messagesPath(workspaceId, sessionId), JSON.stringify(messages, null, 2));
 
     // bump updatedAt in index

@@ -11,7 +11,7 @@ export interface Workspace {
   lastOpenedAt: number;
 }
 
-const workspacesPath = () => dataDir('workspaces.json');
+const workspacesPath = () => dataDir('workspaces', 'index.json');
 
 function loadAll(): Workspace[] {
   try {
@@ -22,7 +22,9 @@ function loadAll(): Workspace[] {
 }
 
 function saveAll(workspaces: Workspace[]): void {
-  fs.writeFileSync(workspacesPath(), JSON.stringify(workspaces, null, 2), 'utf-8');
+  const p = workspacesPath();
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(workspaces, null, 2), 'utf-8');
 }
 
 export const WorkspaceManager = {
@@ -33,7 +35,7 @@ export const WorkspaceManager = {
   create(name: string, folderPath: string): Workspace {
     const workspaces = loadAll();
     const ws: Workspace = {
-      id: generateId(),
+      id: 'WS-' + generateId(),
       name,
       path: folderPath,
       createdAt: Date.now(),

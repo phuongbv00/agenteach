@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { app } from 'electron';
+import { dataDir } from '../utils/dataDir';
 
 export interface Artifact {
   id: string;
@@ -12,12 +12,8 @@ export interface Artifact {
   createdAt: number;
 }
 
-function dataDir(): string {
-  return path.join(app.getPath('userData'), 'artifacts');
-}
-
 function artifactFile(workspaceId: string, sessionId: string): string {
-  return path.join(dataDir(), `${workspaceId}_${sessionId}.json`);
+  return dataDir('workspaces', workspaceId, 'sessions', sessionId, 'artifacts.json');
 }
 
 function loadRaw(workspaceId: string, sessionId: string): Artifact[] {
@@ -31,9 +27,9 @@ function loadRaw(workspaceId: string, sessionId: string): Artifact[] {
 }
 
 function saveRaw(workspaceId: string, sessionId: string, artifacts: Artifact[]): void {
-  const dir = dataDir();
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(artifactFile(workspaceId, sessionId), JSON.stringify(artifacts, null, 2), 'utf-8');
+  const p = artifactFile(workspaceId, sessionId);
+  fs.mkdirSync(path.dirname(p), { recursive: true });
+  fs.writeFileSync(p, JSON.stringify(artifacts, null, 2), 'utf-8');
 }
 
 export const ArtifactStore = {

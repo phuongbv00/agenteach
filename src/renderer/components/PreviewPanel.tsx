@@ -1,48 +1,51 @@
-import React, { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import type { PreviewData } from '../types/api';
+import React, { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+import type { PreviewData } from "../types/api";
 
 interface Props {
   data: PreviewData;
   onClose: () => void;
 }
 
-type LoadState = 'loading' | 'ready' | 'error';
+type LoadState = "loading" | "ready" | "error";
 
 export default function PreviewPanel({ data, onClose }: Props) {
-  const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [mdContent, setMdContent] = useState('');
-  const [blobUrl, setBlobUrl] = useState('');
-  const prevBlobUrl = useRef('');
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [mdContent, setMdContent] = useState("");
+  const [blobUrl, setBlobUrl] = useState("");
+  const prevBlobUrl = useRef("");
 
   useEffect(() => {
-    setLoadState('loading');
-    setMdContent('');
+    setLoadState("loading");
+    setMdContent("");
     if (prevBlobUrl.current) {
       URL.revokeObjectURL(prevBlobUrl.current);
-      prevBlobUrl.current = '';
+      prevBlobUrl.current = "";
     }
-    setBlobUrl('');
+    setBlobUrl("");
 
     let cancelled = false;
 
     async function load() {
       try {
-        if (data.type === 'md') {
+        if (data.type === "md") {
           const text = await window.api.readFileText(data.filePath);
-          if (!cancelled) { setMdContent(text); setLoadState('ready'); }
-        } else if (data.type === 'pdf') {
+          if (!cancelled) {
+            setMdContent(text);
+            setLoadState("ready");
+          }
+        } else if (data.type === "pdf") {
           const buf = await window.api.readFileBinary(data.filePath);
           if (cancelled) return;
-          const blob = new Blob([buf], { type: 'application/pdf' });
+          const blob = new Blob([buf], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
           prevBlobUrl.current = url;
           setBlobUrl(url);
-          setLoadState('ready');
+          setLoadState("ready");
         } else {
           const html = await window.api.readDocxHtml(data.filePath);
           if (cancelled) return;
@@ -54,19 +57,21 @@ export default function PreviewPanel({ data, onClose }: Props) {
             th,td{border:1px solid #ccc;padding:6px 10px;}th{background:#f0f0f0;}
             ul,ol{padding-left:22px;}p{margin:6px 0;}
           </style></head><body>${html}</body></html>`;
-          const blob = new Blob([styled], { type: 'text/html' });
+          const blob = new Blob([styled], { type: "text/html" });
           const url = URL.createObjectURL(blob);
           prevBlobUrl.current = url;
           setBlobUrl(url);
-          setLoadState('ready');
+          setLoadState("ready");
         }
       } catch {
-        if (!cancelled) setLoadState('error');
+        if (!cancelled) setLoadState("error");
       }
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [data.filePath, data.type]);
 
   // Cleanup blob on unmount
@@ -76,14 +81,18 @@ export default function PreviewPanel({ data, onClose }: Props) {
     };
   }, []);
 
-  const typeIcon = data.type === 'pdf' ? '📄' : data.type === 'docx' ? '📝' : '📋';
+  const typeIcon =
+    data.type === "pdf" ? "📄" : data.type === "docx" ? "📝" : "📋";
 
   return (
     <div className="flex flex-col h-full bg-white border-l border-gray-200 w-[440px] flex-shrink-0">
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
         <span className="text-base">{typeIcon}</span>
-        <span className="flex-1 text-sm font-medium text-gray-800 truncate" title={data.filePath}>
+        <span
+          className="flex-1 text-sm font-medium text-gray-800 truncate"
+          title={data.filePath}
+        >
           {data.fileName}
         </span>
         <button
@@ -91,7 +100,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
           title="Mở bằng ứng dụng mặc định"
           className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors flex-shrink-0"
         >
-          Mở ngoài
+          ↗
         </button>
         <button
           onClick={onClose}
@@ -104,30 +113,35 @@ export default function PreviewPanel({ data, onClose }: Props) {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {loadState === 'loading' && (
+        {loadState === "loading" && (
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             Đang tải...
           </div>
         )}
-        {loadState === 'error' && (
+        {loadState === "error" && (
           <div className="flex items-center justify-center h-full text-red-500 text-sm">
             Không thể đọc file này.
           </div>
         )}
-        {loadState === 'ready' && data.type === 'md' && (
+        {loadState === "ready" && data.type === "md" && (
           <div className="h-full overflow-y-auto px-5 py-4 prose prose-sm max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
               {mdContent}
             </ReactMarkdown>
           </div>
         )}
-        {loadState === 'ready' && (data.type === 'pdf' || data.type === 'docx') && blobUrl && (
-          <iframe
-            src={blobUrl}
-            className="w-full h-full border-0"
-            title={data.fileName}
-          />
-        )}
+        {loadState === "ready" &&
+          (data.type === "pdf" || data.type === "docx") &&
+          blobUrl && (
+            <iframe
+              src={blobUrl}
+              className="w-full h-full border-0"
+              title={data.fileName}
+            />
+          )}
       </div>
     </div>
   );
