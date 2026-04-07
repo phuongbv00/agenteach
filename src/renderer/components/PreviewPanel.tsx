@@ -1,16 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import "katex/dist/katex.min.css";
 import {
-  ClipboardList,
   ExternalLink,
-  FileEdit,
-  FileText,
-  X,
+  X
 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
 import type { PreviewData } from "../types/api";
 
 interface Props {
@@ -77,7 +75,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
         } else if (data.type === "pdf") {
           const buf = await window.api.readFileBinary(data.filePath);
           if (cancelled) return;
-          const blob = new Blob([buf as unknown], { type: "application/pdf" });
+          const blob = new Blob([buf as BlobPart], { type: "application/pdf" });
           const url = URL.createObjectURL(blob);
           prevBlobUrl.current = url;
           setBlobUrl(url);
@@ -117,60 +115,54 @@ export default function PreviewPanel({ data, onClose }: Props) {
     };
   }, []);
 
-  const TypeIcon =
-    data.type === "pdf"
-      ? FileText
-      : data.type === "docx"
-        ? FileEdit
-        : ClipboardList;
-
   return (
     <div className="flex h-full flex-shrink-0" style={{ width }}>
       {/* Resize handle */}
       <div
         onMouseDown={onMouseDown}
-        className="w-1 h-full cursor-col-resize hover:bg-blue-400 transition-colors flex-shrink-0"
+        className="w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors flex-shrink-0"
       />
-      <div className="flex flex-col flex-1 bg-white border-l border-gray-200 overflow-hidden">
+      <div className="flex flex-col flex-1 border-l overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-          <TypeIcon size={16} className="flex-shrink-0 text-gray-500" />
+        <div className="flex items-center pl-4 p-2 border-b flex-shrink-0">
           <span
-            className="flex-1 text-sm font-medium text-gray-800 truncate"
+            className="flex-1 text-sm font-medium truncate"
             title={data.filePath}
           >
             {data.fileName}
           </span>
-          <button
+          <Button
             onClick={() => window.api.openFile(data.filePath)}
             title="Mở bằng ứng dụng mặc định"
-            className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors flex-shrink-0"
+            variant="ghost"
+            size="icon"
           >
             <ExternalLink size={14} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors flex-shrink-0"
+            variant="ghost"
+            size="icon"
             title="Đóng"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
           {loadState === "loading" && (
-            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               Đang tải...
             </div>
           )}
           {loadState === "error" && (
-            <div className="flex items-center justify-center h-full text-red-500 text-sm">
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               Không thể đọc file này.
             </div>
           )}
           {loadState === "ready" && data.type === "md" && (
-            <div className="h-full overflow-y-auto px-5 py-4 prose prose-sm max-w-none">
+            <div className="h-full overflow-y-auto px-4 py-2 prose prose-sm max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}

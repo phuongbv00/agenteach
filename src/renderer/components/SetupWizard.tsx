@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Folder, X } from "lucide-react";
 import type { AIProvider } from "../types/api";
 import iconUrl from "../assets/icon.jpeg";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Props {
   onComplete: () => void;
@@ -40,20 +43,6 @@ const PRESETS: ProviderPreset[] = [
     baseUrl: "",
     needsKey: false,
   },
-  // {
-  //   id: "openai",
-  //   label: "OpenAI",
-  //   sublabel: "Cần API key từ openai.com",
-  //   baseUrl: "https://api.openai.com/v1",
-  //   needsKey: true,
-  // },
-  // {
-  //   id: "openai-compatible",
-  //   label: "Khác (OpenAI-compatible)",
-  //   sublabel: "LM Studio, vLLM, Azure...",
-  //   baseUrl: "",
-  //   needsKey: false,
-  // },
 ];
 
 export default function SetupWizard({ onComplete }: Props) {
@@ -80,8 +69,7 @@ export default function SetupWizard({ onComplete }: Props) {
   const [wsCreating, setWsCreating] = useState(false);
 
   // ── Helpers ─────────────────────────────────────────────────
-  const activePreset =
-    PRESETS.find((p) => p.id === selectedPresetId) ?? PRESETS[0];
+  const activePreset = PRESETS.find((p) => p.id === selectedPresetId) ?? PRESETS[0];
   const effectiveUrl =
     selectedPresetId === PRESETS[0].id
       ? activePreset.baseUrl
@@ -128,7 +116,7 @@ export default function SetupWizard({ onComplete }: Props) {
     await window.api.updateConfig({
       teacherName: teacherName.trim(),
       subject: subject.trim(),
-      setupComplete: false, // not complete until workspace is created
+      setupComplete: false,
     });
     await window.api.updateGlobalMemory({
       user: { name: teacherName.trim(), subject: subject.trim(), grades: [] },
@@ -137,10 +125,7 @@ export default function SetupWizard({ onComplete }: Props) {
   };
 
   const handlePickFolder = async () => {
-    // Opens native folder picker; IPC returns null if cancelled
-    const ws = await window.api.createWorkspace(
-      wsName.trim() || "My Workspace",
-    );
+    const ws = await window.api.createWorkspace(wsName.trim() || "My Workspace");
     if (ws) {
       setWsPath(ws.path);
       if (!wsName.trim()) setWsName(ws.name);
@@ -149,7 +134,6 @@ export default function SetupWizard({ onComplete }: Props) {
 
   const handleCreateWorkspace = async () => {
     setWsCreating(true);
-    // wsPath already set from handlePickFolder — workspace already created
     await window.api.updateConfig({ setupComplete: true });
     onComplete();
   };
@@ -162,46 +146,38 @@ export default function SetupWizard({ onComplete }: Props) {
   const currentIdx = STEPS.indexOf(step);
 
   return (
-    <div className="flex items-center justify-center h-full bg-gray-50">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+    <div className="flex items-center justify-center h-full bg-muted/30">
+      <div className="bg-card text-card-foreground rounded-2xl shadow-lg p-8 w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-6">
-          <img
-            src={iconUrl}
-            alt="Agenteach"
-            className="w-24 h-24 mx-auto mb-2 rounded-xl"
-          />
-          <h1 className="text-2xl font-bold text-gray-800">Agenteach</h1>
+          <img src={iconUrl} alt="Agenteach" className="w-24 h-24 mx-auto mb-2 rounded-xl" />
+          <h1 className="text-2xl font-bold text-foreground">Agenteach</h1>
         </div>
 
         {/* Progress */}
         <div className="flex items-center mb-8">
           {STEPS.map((s, i) => (
-            <React.Fragment key={s}>
+            <div key={s} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
                     i < currentIdx
-                      ? "bg-green-500 text-white"
+                      ? "bg-primary text-primary-foreground"
                       : i === currentIdx
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-400"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground/60"
                   }`}
                 >
                   {i < currentIdx ? <Check size={14} /> : i + 1}
                 </div>
-                <span
-                  className={`text-xs mt-1 ${i === currentIdx ? "text-blue-500 font-medium" : "text-gray-400"}`}
-                >
+                <span className={`text-xs mt-1 ${i === currentIdx ? "text-primary font-medium" : "text-muted-foreground/60"}`}>
                   {STEP_LABELS[s]}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-green-400" : "bg-gray-200"}`}
-                />
+                <div className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
               )}
-            </React.Fragment>
+            </div>
           ))}
         </div>
 
@@ -209,12 +185,9 @@ export default function SetupWizard({ onComplete }: Props) {
         {step === "ai-provider" && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">
-                Chọn nguồn AI
-              </h2>
-              <p className="text-sm text-gray-500">
-                Agenteach kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu
-                không rời khỏi mạng của bạn.
+              <h2 className="text-base font-semibold text-foreground mb-1">Chọn nguồn AI</h2>
+              <p className="text-sm text-muted-foreground">
+                Agenteach kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không rời khỏi mạng của bạn.
               </p>
             </div>
 
@@ -222,49 +195,34 @@ export default function SetupWizard({ onComplete }: Props) {
               {PRESETS.map((p) => (
                 <button
                   key={p.id}
-                  onClick={() => {
-                    setSelectedPresetId(p.id);
-                    setConnectionOk(null);
-                    setCustomUrl("");
-                  }}
+                  onClick={() => { setSelectedPresetId(p.id); setConnectionOk(null); setCustomUrl(""); }}
                   className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${
                     selectedPresetId === p.id
-                      ? "border-blue-400 bg-blue-50"
-                      : "hover:bg-gray-50 border-gray-200"
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/30 border-border"
                   }`}
                 >
                   <div
                     className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      selectedPresetId === p.id
-                        ? "border-blue-500"
-                        : "border-gray-300"
+                      selectedPresetId === p.id ? "border-primary" : "border-border"
                     }`}
                   >
-                    {selectedPresetId === p.id && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    )}
+                    {selectedPresetId === p.id && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      {p.label}
-                    </p>
-                    <p className="text-xs text-gray-400">{p.sublabel}</p>
+                    <p className="text-sm font-medium text-foreground">{p.label}</p>
+                    <p className="text-xs text-muted-foreground/60">{p.sublabel}</p>
                   </div>
                 </button>
               ))}
             </div>
 
-            {/* Custom URL input for non-localhost presets */}
             {selectedPresetId !== "ollama-local" && (
               <div className="space-y-2">
-                <input
-                  type="text"
+                <Input
                   autoFocus
                   value={customUrl}
-                  onChange={(e) => {
-                    setCustomUrl(e.target.value);
-                    setConnectionOk(null);
-                  }}
+                  onChange={(e) => { setCustomUrl(e.target.value); setConnectionOk(null); }}
                   onKeyDown={(e) => e.key === "Enter" && handleConnect()}
                   placeholder={
                     "Địa chỉ (" +
@@ -273,21 +231,21 @@ export default function SetupWizard({ onComplete }: Props) {
                       : activePreset.baseUrl || "https://api.example.com/v1") +
                     ")"
                   }
-                  className="w-full border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="font-mono"
                 />
-                <input
+                <Input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="API Key"
                   required={activePreset.needsKey}
-                  className="w-full border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="font-mono"
                 />
               </div>
             )}
 
             {connectionOk === true && (
-              <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm flex items-center gap-2">
+              <div className="bg-primary/5 border border-primary/20 text-primary rounded-xl p-3 text-sm flex items-center gap-2">
                 <CheckCircle2 size={16} /> <span>Kết nối thành công!</span>
               </div>
             )}
@@ -295,31 +253,23 @@ export default function SetupWizard({ onComplete }: Props) {
               <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
                 <p className="font-medium">Không kết nối được. Kiểm tra:</p>
                 <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                  {(selectedPresetId === "ollama-local" ||
-                    selectedPresetId === "ollama-remote") && (
-                    <li>
-                      Ollama đã bật chưa? (chạy <code>ollama serve</code>)
-                    </li>
+                  {(selectedPresetId === "ollama-local" || selectedPresetId === "ollama-remote") && (
+                    <li>Ollama đã bật chưa? (chạy <code>ollama serve</code>)</li>
                   )}
-                  {selectedPresetId !== PRESETS[0].id && (
-                    <li>Địa chỉ URL có đúng không?</li>
-                  )}
+                  {selectedPresetId !== PRESETS[0].id && <li>Địa chỉ URL có đúng không?</li>}
                   {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
                   <li>Nhờ bộ phận IT hỗ trợ nếu cần</li>
                 </ul>
               </div>
             )}
 
-            <button
+            <Button
+              className="w-full rounded-xl"
               onClick={handleConnect}
-              disabled={
-                checking ||
-                (selectedPresetId !== PRESETS[0].id && !customUrl.trim())
-              }
-              className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+              disabled={checking || (selectedPresetId !== PRESETS[0].id && !customUrl.trim())}
             >
               {checking ? "Đang kiểm tra..." : "Kết nối"}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -327,12 +277,9 @@ export default function SetupWizard({ onComplete }: Props) {
         {step === "ai-model" && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">
-                Chọn model AI
-              </h2>
-              <p className="text-sm text-gray-500">
-                Mỗi model có tốc độ và chất lượng khác nhau. Nếu không chắc,
-                chọn cái đầu tiên.
+              <h2 className="text-base font-semibold text-foreground mb-1">Chọn model AI</h2>
+              <p className="text-sm text-muted-foreground">
+                Mỗi model có tốc độ và chất lượng khác nhau. Nếu không chắc, chọn cái đầu tiên.
               </p>
             </div>
 
@@ -344,9 +291,7 @@ export default function SetupWizard({ onComplete }: Props) {
                     <li>Liên hệ bộ phận IT để được cài model phù hợp</li>
                     <li>
                       Hoặc tự tải model qua terminal:{" "}
-                      <code className="bg-orange-100 px-1 rounded font-mono">
-                        ollama pull &lt;tên-model&gt;
-                      </code>
+                      <code className="bg-orange-100 px-1 rounded font-mono">ollama pull &lt;tên-model&gt;</code>
                     </li>
                   </ul>
                 </div>
@@ -355,9 +300,7 @@ export default function SetupWizard({ onComplete }: Props) {
                   <label
                     key={m}
                     className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                      selectedModel === m
-                        ? "border-blue-400 bg-blue-50"
-                        : "hover:bg-gray-50"
+                      selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/30"
                     }`}
                   >
                     <input
@@ -366,28 +309,25 @@ export default function SetupWizard({ onComplete }: Props) {
                       value={m}
                       checked={selectedModel === m}
                       onChange={() => setSelectedModel(m)}
-                      className="accent-blue-500"
+                      className="accent-primary"
                     />
-                    <span className="text-sm font-mono text-gray-700">{m}</span>
+                    <span className="text-sm font-mono text-foreground">{m}</span>
                   </label>
                 ))
               )}
             </div>
 
             <div className="flex gap-2">
-              <button
-                onClick={goBack}
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
-              >
+              <Button variant="outline" className="rounded-xl" onClick={goBack}>
                 <ArrowLeft size={14} /> Quay lại
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1 rounded-xl"
                 onClick={handleModelNext}
                 disabled={!selectedModel}
-                className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
               >
                 Tiếp tục
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -396,60 +336,46 @@ export default function SetupWizard({ onComplete }: Props) {
         {step === "profile" && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">
-                Cho trợ lý biết về bạn
-              </h2>
-              <p className="text-sm text-gray-500">
-                Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời.
-                Có thể thay đổi sau.
+              <h2 className="text-base font-semibold text-foreground mb-1">Cho trợ lý biết về bạn</h2>
+              <p className="text-sm text-muted-foreground">
+                Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời. Có thể thay đổi sau.
               </p>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Tên của bạn <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
+                <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Tên của bạn <span className="text-destructive">*</span>
+                </Label>
+                <Input
                   placeholder="VD: Nguyễn Thị Lan"
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
                   autoFocus
-                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Môn dạy
-                </label>
-                <input
-                  type="text"
+                <Label className="text-sm font-medium text-foreground mb-1.5 block">Môn dạy</Label>
+                <Input
                   placeholder="VD: Toán, Ngữ văn, Lịch sử..."
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  Không bắt buộc — có thể điền sau
-                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Không bắt buộc — có thể điền sau</p>
               </div>
             </div>
 
             <div className="flex gap-2">
-              <button
-                onClick={goBack}
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
-              >
+              <Button variant="outline" className="rounded-xl" onClick={goBack}>
                 <ArrowLeft size={14} /> Quay lại
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1 rounded-xl"
                 onClick={handleFinish}
                 disabled={!teacherName.trim()}
-                className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
               >
                 Tiếp tục <ArrowRight size={14} />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -458,47 +384,40 @@ export default function SetupWizard({ onComplete }: Props) {
         {step === "workspace" && (
           <div className="space-y-5">
             <div>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">
-                Chọn thư mục làm việc
-              </h2>
-              <p className="text-sm text-gray-500">
-                Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý sẽ
-                tìm và đọc file trong thư mục này.
+              <h2 className="text-base font-semibold text-foreground mb-1">Chọn thư mục làm việc</h2>
+              <p className="text-sm text-muted-foreground">
+                Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý sẽ tìm và đọc file trong thư mục này.
               </p>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Tên workspace
-                </label>
-                <input
-                  type="text"
+                <Label className="text-sm font-medium text-foreground mb-1.5 block">Tên workspace</Label>
+                <Input
                   autoFocus
                   placeholder="VD: Tài liệu Toán 10"
                   value={wsName}
                   onChange={(e) => setWsName(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
               </div>
 
               {wsPath ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <Folder size={14} className="text-green-600 flex-shrink-0" />
-                  <span className="text-sm text-green-700 font-mono truncate flex-1">
-                    {wsPath}
-                  </span>
-                  <button
+                <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                  <Folder size={14} className="text-primary flex-shrink-0" />
+                  <span className="text-sm text-primary font-mono truncate flex-1">{wsPath}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setWsPath("")}
-                    className="text-gray-400 hover:text-red-500"
+                    className="text-muted-foreground/60 hover:text-destructive"
                   >
                     <X size={12} />
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <button
                   onClick={handlePickFolder}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 rounded-xl text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
                   <Folder size={14} /> Chọn thư mục...
                 </button>
@@ -506,28 +425,25 @@ export default function SetupWizard({ onComplete }: Props) {
             </div>
 
             <div className="flex gap-2">
-              <button
-                onClick={goBack}
-                className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
-              >
+              <Button variant="outline" className="rounded-xl" onClick={goBack}>
                 <ArrowLeft size={14} /> Quay lại
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1 rounded-xl bg-primary hover:bg-primary/80"
                 onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
                 disabled={wsCreating}
-                className="flex-1 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
               >
                 {wsCreating
                   ? "Đang tạo..."
                   : wsPath
                     ? <span className="flex items-center justify-center gap-1">Bắt đầu sử dụng <Check size={14} /></span>
                     : "Chọn thư mục..."}
-              </button>
+              </Button>
             </div>
 
             <button
               onClick={handleSkipWorkspace}
-              className="w-full text-xs text-gray-400 hover:text-gray-600 text-center"
+              className="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground text-center"
             >
               Bỏ qua, tạo workspace sau
             </button>

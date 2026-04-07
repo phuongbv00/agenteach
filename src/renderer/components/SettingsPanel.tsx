@@ -1,4 +1,16 @@
-import React, { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Brain,
   Check,
@@ -9,8 +21,9 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { AllMemory, MemoryLayer, AIProvider } from "../types/api";
+import type { AIProvider, AllMemory, MemoryLayer } from "../types/api";
 import { randomUUID } from "../utils/uuid";
 
 interface ListEditorProps {
@@ -33,33 +46,31 @@ function ListEditor({
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-medium text-gray-600">{label}</span>
-        <button
-          onClick={onAdd}
-          className="text-xs text-blue-500 hover:text-blue-700 font-medium"
-        >
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <Button variant="ghost" size="xs" onClick={onAdd} className="text-primary">
           + Thêm
-        </button>
+        </Button>
       </div>
       <div className="space-y-1.5">
         {items.length === 0 && (
-          <p className="text-xs text-gray-400 italic">Chưa có.</p>
+          <p className="text-xs text-muted-foreground italic">Chưa có.</p>
         )}
         {items.map((item, i) => (
           <div key={i} className="flex gap-2">
-            <input
-              type="text"
+            <Input
               value={item}
               onChange={(e) => onChange(i, e.target.value)}
               placeholder={placeholder}
-              className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="h-8 text-sm"
             />
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => onRemove(i)}
-              className="text-gray-400 hover:text-red-500 px-2"
+              className="text-muted-foreground hover:text-destructive flex-shrink-0"
             >
               <X size={14} />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -70,8 +81,6 @@ function ListEditor({
 interface Props {
   onClose: () => void;
 }
-
-type Tab = "connection" | "memory" | "support";
 
 const EMPTY_PROVIDER: AIProvider = {
   id: "",
@@ -105,7 +114,7 @@ export default function SettingsPanel({ onClose }: Props) {
   const [memSaving, setMemSaving] = useState(false);
   const [memSaved, setMemSaved] = useState(false);
 
-  const [tab, setTab] = useState<Tab>("connection");
+  const [tab, setTab] = useState("connection");
 
   useEffect(() => {
     if (activeWorkspace) {
@@ -113,7 +122,6 @@ export default function SettingsPanel({ onClose }: Props) {
     }
   }, [activeWorkspace?.id]);
 
-  // Reload models for active provider on mount
   useEffect(() => {
     const active = providers.find((p) => p.id === activeProviderId);
     if (active) window.api.listProviderModels(active).then(setProviderModels);
@@ -141,7 +149,7 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   const handleDeleteProvider = async (id: string) => {
-    if (!confirm("Xoá provider này?")) return;
+    if (!confirm("Xoá kết nối này?")) return;
     await window.api.deleteProvider(id);
     const cfg = await window.api.getConfig();
     setConfig(cfg);
@@ -161,8 +169,9 @@ export default function SettingsPanel({ onClose }: Props) {
     }
   };
 
-  const handleSaveModel = async () => {
-    await window.api.selectModel(selectedModel);
+  const handleSelectModel = async (model: string) => {
+    setSelectedModel(model);
+    await window.api.selectModel(model);
     setConfig(await window.api.getConfig());
   };
 
@@ -230,111 +239,83 @@ export default function SettingsPanel({ onClose }: Props) {
     setTimeout(() => setExportResult(null), 3000);
   };
 
-  const TAB_LABELS: Record<Tab, string> = {
-    connection: "Kết nối AI",
-    memory: "Bộ nhớ",
-    support: "Hỗ trợ",
-  };
-
-  const TAB_ICONS: Record<Tab, React.ReactNode> = {
-    connection: <Plug size={14} />,
-    memory: <Brain size={14} />,
-    support: <LifeBuoy size={14} />,
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col"
-        style={{ maxHeight: "85vh" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
-          <h2 className="text-base font-semibold text-gray-800">Cài đặt</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="flex flex-col max-h-[85vh]">
+        <DialogHeader>
+          <DialogTitle>Cài đặt</DialogTitle>
+        </DialogHeader>
 
-        {/* Tabs */}
-        <div className="flex border-b px-4 flex-shrink-0">
-          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                tab === t
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {TAB_ICONS[t]}
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
+        <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
+          <TabsList className="w-full flex-shrink-0 rounded-none">
+            <TabsTrigger value="connection">
+              <Plug size={14} /> Kết nối AI
+            </TabsTrigger>
+            <TabsTrigger value="memory">
+              <Brain size={14} /> Bộ nhớ
+            </TabsTrigger>
+            <TabsTrigger value="support">
+              <LifeBuoy size={14} /> Hỗ trợ
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* ── Tab: Connection ── */}
-          {tab === "connection" && (
-            <>
+          <div className="overflow-y-auto mt-2 flex-1 min-h-0">
+            {/* ── Tab: Connection ── */}
+            <TabsContent value="connection">
               {/* Provider list */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    Kết nối AI
-                  </h3>
-                  <button
+                  <h3 className="text-sm font-semibold">Kết nối AI</h3>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="text-primary"
                     onClick={() =>
-                      setEditingProvider({
-                        ...EMPTY_PROVIDER,
-                        id: randomUUID(),
-                      })
+                      setEditingProvider({ ...EMPTY_PROVIDER, id: randomUUID() })
                     }
-                    className="text-xs text-blue-500 hover:text-blue-700 font-medium"
                   >
                     + Thêm kết nối
-                  </button>
+                  </Button>
                 </div>
                 <div className="space-y-2">
                   {providers.map((p) => (
                     <div
                       key={p.id}
-                      className={`flex items-center gap-3 p-3 border rounded-xl transition-colors ${p.id === activeProviderId ? "border-blue-400 bg-blue-50" : "hover:bg-gray-50"}`}
+                      className={`flex items-center gap-3 p-3 border transition-colors ${p.id === activeProviderId ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+                      onClick={(e) => { e.stopPropagation(); handleSetActiveProvider(p.id); }}
                     >
                       <button
-                        onClick={() => handleSetActiveProvider(p.id)}
-                        className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${p.id === activeProviderId ? "border-blue-500" : "border-gray-300"}`}
+                        className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${p.id === activeProviderId ? "border-primary" : "border-muted-foreground/40"}`}
                       >
                         {p.id === activeProviderId && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                         )}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-700 truncate">
+                        <p className="text-sm font-medium truncate">
                           {p.name || "(chưa đặt tên)"}
                         </p>
-                        <p className="text-xs text-gray-400 font-mono truncate">
+                        <p className="text-xs text-muted-foreground font-mono truncate">
                           {p.baseUrl}
                         </p>
                       </div>
-                      <button
-                        onClick={() => setEditingProvider({ ...p })}
-                        className="text-gray-400 hover:text-blue-500 px-1"
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={(e) => { e.stopPropagation(); setEditingProvider({ ...p }) }}
+                        className="text-muted-foreground"
                       >
                         <Pencil size={12} />
-                      </button>
+                      </Button>
                       {providers.length > 1 && (
-                        <button
-                          onClick={() => handleDeleteProvider(p.id)}
-                          className="text-gray-400 hover:text-red-500 px-1"
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteProvider(p.id) }}
+                          className="text-muted-foreground hover:text-destructive"
                         >
                           <X size={12} />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ))}
@@ -343,216 +324,129 @@ export default function SettingsPanel({ onClose }: Props) {
 
               {/* Edit/Add provider form */}
               {editingProvider && (
-                <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
-                  <h4 className="text-sm font-semibold text-gray-700">
+                <div className="border p-4 space-y-3 bg-muted/30 mt-2">
+                  <h4 className="text-sm font-semibold">
                     {providers.find((p) => p.id === editingProvider.id)
                       ? "Sửa kết nối"
                       : "Thêm kết nối"}
                   </h4>
                   {(
                     [
-                      {
-                        label: "Tên",
-                        key: "name",
-                        placeholder: "VD: Ollama local",
-                        mono: false,
-                      },
-                      {
-                        label: "Base URL",
-                        key: "baseUrl",
-                        placeholder: "http://localhost:11434/v1",
-                        mono: true,
-                      },
-                      {
-                        label: "API Key",
-                        key: "apiKey",
-                        placeholder: "Để trống nếu không cần",
-                        mono: true,
-                      },
+                      { label: "Tên", key: "name", placeholder: "VD: Ollama local", mono: false },
+                      { label: "Base URL", key: "baseUrl", placeholder: "http://localhost:11434/v1", mono: true },
+                      { label: "API Key", key: "apiKey", placeholder: "Để trống nếu không cần", mono: true },
                     ] as const
                   ).map(({ label, key, placeholder, mono }) => (
                     <div key={key} className="flex items-center gap-3">
-                      <label className="text-xs text-gray-500 w-16 flex-shrink-0">
-                        {label}
-                      </label>
-                      <input
+                      <Label className="text-xs w-16 flex-shrink-0">{label}</Label>
+                      <Input
                         type={key === "apiKey" ? "password" : "text"}
                         value={editingProvider[key]}
                         onChange={(e) =>
-                          setEditingProvider({
-                            ...editingProvider,
-                            [key]: e.target.value,
-                          })
+                          setEditingProvider({ ...editingProvider, [key]: e.target.value })
                         }
                         placeholder={placeholder}
-                        className={`flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 ${mono ? "font-mono" : ""}`}
+                        className={`h-8 text-sm ${mono ? "font-mono" : ""}`}
                       />
                     </div>
                   ))}
-                  <div className="flex gap-2 pt-1">
-                    <button
+                  <div className="flex gap-2 pt-1 items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleCheckProvider(editingProvider)}
                       disabled={checking}
-                      className="px-3 py-1.5 text-xs border rounded-lg text-gray-600 hover:bg-white disabled:opacity-50"
                     >
                       {checking ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
-                    </button>
+                    </Button>
                     {checkResult === "ok" && (
-                      <span className="flex items-center gap-1 text-xs text-green-600 self-center">
+                      <span className="flex items-center gap-1 text-xs text-primary">
                         <CheckCircle2 size={14} /> OK
                       </span>
                     )}
                     {checkResult === "fail" && (
-                      <span className="flex items-center gap-1 text-xs text-red-600 self-center">
-                        <XCircle size={14} /> Lỗi
+                      <span className="flex items-center gap-1 text-xs text-destructive">
+                        <XCircle size={14} /> ERROR
                       </span>
                     )}
                     <div className="flex-1" />
-                    <button
-                      onClick={() => {
-                        setEditingProvider(null);
-                        setCheckResult(null);
-                      }}
-                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setEditingProvider(null); setCheckResult(null); }}
                     >
                       Huỷ
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={() => handleSaveProvider(editingProvider)}
-                      className="px-3 py-1.5 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
                     >
                       Lưu
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
 
+              <Separator className="my-4" />
+
               {/* Model selection */}
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                  Model AI mặc định
-                </h3>
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Model AI mặc định</h3>
                 <div className="space-y-2">
                   {providerModels.length === 0 && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       Chưa có model — kiểm tra kết nối provider.
                     </p>
                   )}
                   {providerModels.map((m) => (
                     <label
                       key={m}
-                      className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${selectedModel === m ? "border-blue-400 bg-blue-50" : "hover:bg-gray-50"}`}
+                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-colors ${selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
                     >
                       <input
                         type="radio"
                         name="model"
                         value={m}
                         checked={selectedModel === m}
-                        onChange={() => setSelectedModel(m)}
-                        className="accent-blue-500"
+                        onChange={() => handleSelectModel(m)}
+                        className="accent-primary"
                       />
-                      <span className="text-sm font-mono text-gray-700">
-                        {m}
-                      </span>
-                      {config?.selectedModel === m && (
-                        <span className="ml-auto text-xs text-blue-500 font-medium">
-                          Đang sử dụng
-                        </span>
-                      )}
+                      <span className="text-sm font-mono">{m}</span>
                     </label>
                   ))}
                 </div>
-                <button
-                  onClick={handleSaveModel}
-                  disabled={!selectedModel}
-                  className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-xl disabled:opacity-40 transition-colors"
-                >
-                  Lưu model
-                </button>
               </div>
-            </>
-          )}
+            </TabsContent>
 
-          {/* ── Tab: Support ── */}
-          {tab === "support" && (
-            <div className="space-y-4">
-              <div className="border rounded-xl p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  Logs ứng dụng
-                </h3>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  File log ghi lại toàn bộ hoạt động của ứng dụng (main process,
-                  renderer, lỗi). Gửi file này khi báo lỗi để được hỗ trợ nhanh
-                  hơn.
-                </p>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleExportLogs}
-                    disabled={exporting}
-                    className="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-900 text-white rounded-xl disabled:opacity-50 transition-colors"
-                  >
-                    {exporting ? "Đang xuất..." : "Tải xuống logs"}
-                  </button>
-                  {exportResult === "ok" && (
-                    <span className="flex items-center gap-1 text-xs text-green-600">
-                      <Check size={14} /> Đã lưu file
-                    </span>
-                  )}
-                  {exportResult === "cancel" && (
-                    <span className="text-xs text-gray-400">Đã huỷ</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Tab: Memory ── */}
-          {tab === "memory" && (
-            <>
+            {/* ── Tab: Memory ── */}
+            <TabsContent value="memory">
               {!activeWorkspace ? (
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Chọn một workspace để xem bộ nhớ.
                 </p>
               ) : !allMemory ? (
-                <p className="text-sm text-gray-400">Đang tải...</p>
+                <p className="text-sm text-muted-foreground">Đang tải...</p>
               ) : (
-                <>
+                <div className="space-y-5">
                   {/* ── Global ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      <Badge variant="secondary" className="text-primary bg-primary/10">
                         Toàn cục
-                      </span>
-                      <p className="text-xs text-gray-400">
-                        Áp dụng mọi workspace
-                      </p>
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">Áp dụng mọi workspace</p>
                     </div>
                     <div className="space-y-2 mb-3">
                       {(
                         [
-                          {
-                            label: "Tên",
-                            key: "name",
-                            placeholder: "VD: Nguyễn Thị Lan",
-                          },
-                          {
-                            label: "Môn dạy",
-                            key: "subject",
-                            placeholder: "VD: Toán, Ngữ văn...",
-                          },
-                          {
-                            label: "Lớp dạy",
-                            key: "grades",
-                            placeholder: "VD: 10A1, 11B2",
-                          },
+                          { label: "Tên", key: "name", placeholder: "VD: Nguyễn Thị Lan" },
+                          { label: "Môn dạy", key: "subject", placeholder: "VD: Toán, Ngữ văn..." },
+                          { label: "Lớp dạy", key: "grades", placeholder: "VD: 10A1, 11B2" },
                         ] as const
                       ).map(({ label, key, placeholder }) => (
                         <div key={key} className="flex items-center gap-3">
-                          <label className="text-sm text-gray-500 w-20 flex-shrink-0">
-                            {label}
-                          </label>
-                          <input
-                            type="text"
+                          <Label className="text-sm w-20 flex-shrink-0">{label}</Label>
+                          <Input
                             value={
                               key === "grades"
                                 ? allMemory.global.user.grades.join(", ")
@@ -561,10 +455,7 @@ export default function SettingsPanel({ onClose }: Props) {
                             onChange={(e) => {
                               const val =
                                 key === "grades"
-                                  ? e.target.value
-                                      .split(",")
-                                      .map((s) => s.trim())
-                                      .filter(Boolean)
+                                  ? e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
                                   : e.target.value;
                               setLayer("global", (m) => ({
                                 ...m,
@@ -572,7 +463,7 @@ export default function SettingsPanel({ onClose }: Props) {
                               }));
                             }}
                             placeholder={placeholder}
-                            className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            className="h-8 text-sm"
                           />
                         </div>
                       ))}
@@ -582,40 +473,30 @@ export default function SettingsPanel({ onClose }: Props) {
                       placeholder="VD: Không dùng bullet point"
                       items={allMemory.global.feedback}
                       onAdd={() => addListItem("global", "feedback")}
-                      onChange={(i, v) =>
-                        updateListItem("global", "feedback", i, v)
-                      }
+                      onChange={(i, v) => updateListItem("global", "feedback", i, v)}
                       onRemove={(i) => removeListItem("global", "feedback", i)}
                     />
                     {Object.keys(allMemory.global.style).length > 0 && (
                       <div className="mt-3">
-                        <p className="text-xs text-gray-400 mb-1">
-                          Phong cách (tự học):
-                        </p>
-                        {Object.entries(allMemory.global.style).map(
-                          ([k, v]) => (
-                            <div
-                              key={k}
-                              className="bg-gray-50 rounded-lg px-3 py-2 text-xs mb-1"
-                            >
-                              <span className="text-gray-400 font-medium">
-                                {k}:
-                              </span>{" "}
-                              <span className="text-gray-700">{v}</span>
-                            </div>
-                          ),
-                        )}
+                        <p className="text-xs text-muted-foreground mb-1">Phong cách (tự học):</p>
+                        {Object.entries(allMemory.global.style).map(([k, v]) => (
+                          <div key={k} className="bg-muted rounded-lg px-3 py-2 text-xs mb-1">
+                            <span className="text-muted-foreground font-medium">{k}:</span>{" "}
+                            <span>{v}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
 
                   {/* ── Workspace ── */}
-                  <div className="border-t pt-4">
+                  <div>
+                    <Separator className="mb-4" />
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      <Badge variant="secondary" className="text-primary bg-primary/10">
                         Workspace
-                      </span>
-                      <p className="text-xs text-gray-400">
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">
                         Chỉ trong "{activeWorkspace.name}"
                       </p>
                     </div>
@@ -624,12 +505,8 @@ export default function SettingsPanel({ onClose }: Props) {
                       placeholder="VD: Đang soạn đề HK1 môn Toán 10"
                       items={allMemory.workspace.context}
                       onAdd={() => addListItem("workspace", "context")}
-                      onChange={(i, v) =>
-                        updateListItem("workspace", "context", i, v)
-                      }
-                      onRemove={(i) =>
-                        removeListItem("workspace", "context", i)
-                      }
+                      onChange={(i, v) => updateListItem("workspace", "context", i, v)}
+                      onRemove={(i) => removeListItem("workspace", "context", i)}
                     />
                     <div className="mt-3">
                       <ListEditor
@@ -637,40 +514,65 @@ export default function SettingsPanel({ onClose }: Props) {
                         placeholder="VD: Tài liệu lưu trong thư mục De_thi"
                         items={allMemory.workspace.feedback}
                         onAdd={() => addListItem("workspace", "feedback")}
-                        onChange={(i, v) =>
-                          updateListItem("workspace", "feedback", i, v)
-                        }
-                        onRemove={(i) =>
-                          removeListItem("workspace", "feedback", i)
-                        }
+                        onChange={(i, v) => updateListItem("workspace", "feedback", i, v)}
+                        onRemove={(i) => removeListItem("workspace", "feedback", i)}
                       />
                     </div>
                   </div>
-                </>
+                </div>
               )}
-            </>
-          )}
-        </div>
+            </TabsContent>
+
+            {/* ── Tab: Support ── */}
+            <TabsContent value="support">
+              <div className="border rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Logs ứng dụng</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  File log ghi lại toàn bộ hoạt động của ứng dụng (main process,
+                  renderer, lỗi). Gửi file này khi báo lỗi để được hỗ trợ nhanh hơn.
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={handleExportLogs}
+                    disabled={exporting}
+                  >
+                    {exporting ? "Đang xuất..." : "Tải xuống logs"}
+                  </Button>
+                  {exportResult === "ok" && (
+                    <span className="flex items-center gap-1 text-xs text-primary">
+                      <Check size={14} /> Đã lưu file
+                    </span>
+                  )}
+                  {exportResult === "cancel" && (
+                    <span className="text-xs text-muted-foreground">Đã huỷ</span>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </div>
+        </Tabs>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t flex justify-end gap-2 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 border rounded-xl transition-colors"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             Đóng
-          </button>
+          </Button>
           {tab === "memory" && activeWorkspace && allMemory && (
-            <button
-              onClick={handleSaveMemory}
-              disabled={memSaving}
-              className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-xl disabled:opacity-50 transition-colors"
-            >
-              {memSaved ? <span className="flex items-center gap-1"><Check size={14} /> Đã lưu</span> : memSaving ? "Đang lưu..." : "Lưu"}
-            </button>
+            <Button onClick={handleSaveMemory} disabled={memSaving}>
+              {memSaved ? (
+                <span className="flex items-center gap-1">
+                  <Check size={14} /> Đã lưu
+                </span>
+              ) : memSaving ? (
+                "Đang lưu..."
+              ) : (
+                "Lưu"
+              )}
+            </Button>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

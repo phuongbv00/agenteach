@@ -125,7 +125,7 @@ async function buildPdfBuffer(content: string): Promise<Buffer> {
 
   const pdfWin = new BrowserWindow({
     show: false,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, paintWhenInitiallyHidden: true },
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
 
   try {

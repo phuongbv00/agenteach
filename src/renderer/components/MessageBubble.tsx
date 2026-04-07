@@ -1,21 +1,15 @@
-import React, { useState } from "react";
+import "katex/dist/katex.min.css";
 import {
-  Brain,
-  CalendarDays,
   ChevronDown,
-  ChevronRight,
-  FileText,
-  FolderOpen,
-  Pencil,
-  Search,
+  ChevronRight
 } from "lucide-react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
-import type { ChatMessage } from "../types/api";
 import type { ReasoningItem, ToolCallItem } from "../stores/chatStore";
+import type { ChatMessage } from "../types/api";
 
 // ── Thinking parser (for StreamingBubble only) ───────────────────────────────
 interface ParsedContent {
@@ -45,76 +39,111 @@ function parseThinking(raw: string): ParsedContent {
   return { thinking: thinking.trim(), thinkingOpen, text: text.trim() };
 }
 
-// ── ToolCallBubble ───────────────────────────────────────────────────────────
-const TOOL_ICON_MAP: Record<string, React.ReactNode> = {
-  list_directory: <FolderOpen size={12} />,
-  read_file: <FileText size={12} />,
-  write_file: <Pencil size={12} />,
-  search_in_files: <Search size={12} />,
-  find_files: <Search size={12} />,
-  update_memory: <Brain size={12} />,
-  get_date: <CalendarDays size={12} />,
-};
-
-interface ToolCallBubbleProps {
-  item: ToolCallItem;
+// ── ExpandableBubble (Reusable) ─────────────────────────────────────────────
+interface ExpandableBubbleProps {
+  label: React.ReactNode;
+  children: React.ReactNode;
+  defaultExpanded?: boolean;
+  isThinking?: boolean;
 }
 
-export function ToolCallBubble({ item }: ToolCallBubbleProps) {
-  const [expanded, setExpanded] = useState(false);
-  const icon = TOOL_ICON_MAP[item.toolName] ?? null;
+export function ExpandableBubble({
+  label,
+  children,
+  defaultExpanded = false,
+  isThinking = false,
+}: ExpandableBubbleProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
     <div className="mb-1.5">
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors py-0.5"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 cursor-pointer"
       >
         {expanded ? (
-          <ChevronDown size={12} className="text-gray-300" />
+          <ChevronDown size={12} />
         ) : (
-          <ChevronRight size={12} className="text-gray-300" />
+          <ChevronRight size={12} />
         )}
-        <span>{icon}</span>
-        <span>{item.label}</span>
+        {label}
+        {isThinking && (
+          <span className="inline-flex gap-0.5 ml-1">
+            <span
+              className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            />
+            <span
+              className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            />
+            <span
+              className="w-1 h-1 bg-muted-foreground rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            />
+          </span>
+        )}
       </button>
 
       {expanded && (
-        <div className="mt-1 bg-gray-50 border-l-2 border-gray-200 overflow-hidden text-xs">
-          {Object.keys(item.args).length > 0 && (
-            <div className="px-3 py-2 border-b border-gray-100">
-              <p
-                className="text-gray-400 font-medium mb-1 uppercase tracking-wide"
-                style={{ fontSize: "10px" }}
-              >
-                Đầu vào
-              </p>
+        <div className="mt-1 bg-muted/50 border-l-3 text-xs transition-all animate-in fade-in slide-in-from-top-1 duration-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ToolCallBubble ───────────────────────────────────────────────────────────
+interface ToolCallBubbleProps {
+  item: ToolCallItem;
+}
+
+export function ToolCallBubble({ item }: ToolCallBubbleProps) {
+  const label = (
+    <div className="flex items-center gap-1.5">
+      <span>{item.label}</span>
+    </div>
+  );
+
+  return (
+    <ExpandableBubble label={label}>
+      <div className="overflow-hidden">
+        {Object.keys(item.args).length > 0 && (
+          <div className="px-3 py-2 border-b border-dashed">
+            <p
+              className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider"
+            >
+              Tham số
+            </p>
+            <div className="space-y-1">
               {Object.entries(item.args).map(([k, v]) => (
                 <div key={k} className="flex gap-2">
-                  <span className="text-gray-400 flex-shrink-0">{k}:</span>
-                  <span className="text-gray-600 font-mono break-all">
+                  <span className="text-muted-foreground/80 flex-shrink-0">
+                    {k}:
+                  </span>
+                  <span className="text-muted-foreground font-mono break-all line-clamp-5 hover:line-clamp-none transition-all">
                     {String(v)}
                   </span>
                 </div>
               ))}
             </div>
-          )}
-          {item.result && (
-            <div className="px-3 py-2">
-              <p
-                className="text-gray-400 font-medium mb-1 uppercase tracking-wide"
-                style={{ fontSize: "10px" }}
-              >
-                Kết quả
-              </p>
-              <pre className="text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
-                {item.result}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+        {item.result && (
+          <div className="px-3 py-2">
+            <p
+              className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider"
+            >
+              Kết quả
+            </p>
+            <pre className="text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed max-h-60 overflow-y-auto thin-scrollbar">
+              {item.result}
+            </pre>
+          </div>
+        )}
+      </div>
+    </ExpandableBubble>
   );
 }
 
@@ -125,44 +154,16 @@ interface ReasoningBubbleProps {
 }
 
 export function ReasoningBubble({ item, isOpen }: ReasoningBubbleProps) {
-  const [expanded, setExpanded] = useState(false);
+  const label = (
+    <span>{isOpen ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>
+  );
+
   return (
-    <div className="mb-1.5">
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors py-0.5"
-      >
-        {expanded ? (
-          <ChevronDown size={12} className="text-gray-300" />
-        ) : (
-          <ChevronRight size={12} className="text-gray-300" />
-        )}
-        <span className="italic">
-          {isOpen ? "Đang suy nghĩ" : "Dòng suy nghĩ"}
-        </span>
-        {isOpen && (
-          <span className="inline-flex gap-0.5 ml-1">
-            <span
-              className="w-1 h-1 bg-gray-300 rounded-full animate-bounce"
-              style={{ animationDelay: "0ms" }}
-            />
-            <span
-              className="w-1 h-1 bg-gray-300 rounded-full animate-bounce"
-              style={{ animationDelay: "150ms" }}
-            />
-            <span
-              className="w-1 h-1 bg-gray-300 rounded-full animate-bounce"
-              style={{ animationDelay: "300ms" }}
-            />
-          </span>
-        )}
-      </button>
-      {expanded && item.content && (
-        <div className="mt-1 px-3 py-2 bg-gray-50 border-l-2 border-gray-200 text-xs text-gray-500 leading-relaxed whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
-          {item.content}
-        </div>
-      )}
-    </div>
+    <ExpandableBubble label={label} isThinking={isOpen} defaultExpanded={isOpen}>
+      <div className="px-3 py-2 text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto thin-scrollbar">
+        {item.content}
+      </div>
+    </ExpandableBubble>
   );
 }
 
@@ -176,8 +177,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   if (isUser) {
     return (
-      <div className="flex justify-end mb-4">
-        <div className="bg-blue-500 text-white rounded-lg px-4 py-2.5">
+      <div className="flex justify-end my-4">
+        <div className="bg-primary text-primary-foreground px-4 py-2.5">
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
       </div>
@@ -185,8 +186,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return (
-    <div className="mb-4">
-      <div className="prose prose-sm max-w-none text-gray-800">
+    <div className="my-4">
+      <div className="prose prose-sm max-w-none">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}

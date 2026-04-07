@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   ExternalLink,
-  FileEdit,
-  FileText,
   Folder,
+  FolderOpen,
   Plus,
   Settings,
   X,
@@ -14,6 +12,10 @@ import {
 import { useAppStore } from "../stores/appStore";
 import { useChatStore } from "../stores/chatStore";
 import type { Workspace, Session, Artifact } from "../types/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Props {
   onWorkspaceChange: () => void;
@@ -43,9 +45,7 @@ export default function WorkspaceSidebar({
 
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [newWsName, setNewWsName] = useState("");
-  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(
-    null,
-  );
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [artifactsOpen, setArtifactsOpen] = useState(true);
 
@@ -61,25 +61,16 @@ export default function WorkspaceSidebar({
   // Load artifacts when session changes
   useEffect(() => {
     if (activeWorkspace && activeSessionId) {
-      window.api
-        .listArtifacts(activeWorkspace.id, activeSessionId)
-        .then(setArtifacts);
+      window.api.listArtifacts(activeWorkspace.id, activeSessionId).then(setArtifacts);
     } else {
       setArtifacts([]);
     }
   }, [activeWorkspace?.id, activeSessionId]);
 
-  const handleDeleteArtifact = async (
-    e: React.MouseEvent,
-    artifact: Artifact,
-  ) => {
+  const handleDeleteArtifact = async (e: React.MouseEvent, artifact: Artifact) => {
     e.stopPropagation();
     if (!activeWorkspace || !activeSessionId) return;
-    await window.api.deleteArtifact(
-      activeWorkspace.id,
-      activeSessionId,
-      artifact.id,
-    );
+    await window.api.deleteArtifact(activeWorkspace.id, activeSessionId, artifact.id);
     removeArtifact(artifact.id);
   };
 
@@ -90,7 +81,6 @@ export default function WorkspaceSidebar({
       const list = await window.api.listWorkspaces();
       setWorkspaces(list);
       setActiveWorkspace(ws);
-      // auto-create first session
       const session = await window.api.createSession(ws.id);
       setSessions([session]);
       setActiveSessionId(session.id);
@@ -125,14 +115,12 @@ export default function WorkspaceSidebar({
     const list = await window.api.listWorkspaces();
     setWorkspaces(list);
     const config = await window.api.getConfig();
-    const newActive =
-      list.find((w) => w.id === config.activeWorkspaceId) ?? null;
+    const newActive = list.find((w) => w.id === config.activeWorkspaceId) ?? null;
     setActiveWorkspace(newActive);
     if (newActive) {
       const sessionList = await window.api.listSessions(newActive.id);
       setSessions(sessionList);
-      if (sessionList.length > 0)
-        await loadSession(newActive.id, sessionList[0]);
+      if (sessionList.length > 0) await loadSession(newActive.id, sessionList[0]);
       else clear();
     } else {
       setSessions([]);
@@ -143,10 +131,7 @@ export default function WorkspaceSidebar({
 
   const loadSession = async (workspaceId: string, session: Session) => {
     setActiveSessionId(session.id);
-    const messages = await window.api.loadSessionMessages(
-      workspaceId,
-      session.id,
-    );
+    const messages = await window.api.loadSessionMessages(workspaceId, session.id);
     loadItems(messages);
   };
 
@@ -164,10 +149,7 @@ export default function WorkspaceSidebar({
     clear();
   };
 
-  const handleDeleteSession = async (
-    e: React.MouseEvent,
-    sessionId: string,
-  ) => {
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!activeWorkspace) return;
     await window.api.deleteSession(activeWorkspace.id, sessionId);
@@ -190,11 +172,7 @@ export default function WorkspaceSidebar({
       setRenamingSessionId(null);
       return;
     }
-    await window.api.renameSession(
-      activeWorkspace.id,
-      sessionId,
-      renameValue.trim(),
-    );
+    await window.api.renameSession(activeWorkspace.id, sessionId, renameValue.trim());
     const list = await window.api.listSessions(activeWorkspace.id);
     setSessions(list);
     setRenamingSessionId(null);
@@ -205,20 +183,17 @@ export default function WorkspaceSidebar({
     const now = new Date();
     const diff = now.getTime() - ts;
     if (diff < 86400000 && d.getDate() === now.getDate()) {
-      return d.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
     }
     return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-gray-100 w-60 flex-shrink-0 border-r border-gray-800">
+    <div className="flex flex-col h-full bg-sidebar w-60 flex-shrink-0 border-r">
       {/* Workspaces section */}
       <div className="flex-shrink-0">
-        <div className="px-3 pt-4 pb-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <div className="px-3 py-2">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Workspace
           </span>
         </div>
@@ -229,99 +204,99 @@ export default function WorkspaceSidebar({
               onClick={() => handleSelectWorkspace(ws)}
               className={`group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
                 activeWorkspace?.id === ws.id
-                  ? "bg-gray-700 text-white"
-                  : "hover:bg-gray-800 text-gray-400"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "hover:bg-muted"
               }`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                <Folder size={14} className="flex-shrink-0" />
+                {activeWorkspace?.id === ws.id ? (
+                  <FolderOpen size={14} className="flex-shrink-0" />
+                ) : (
+                  <Folder size={14} className="flex-shrink-0" />
+                )}
                 <span className="text-sm truncate">{ws.name}</span>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={(e) => handleDeleteWorkspace(e, ws.id)}
-                className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 px-1 flex-shrink-0"
+                className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0 -mr-1"
               >
-                <X size={10} />
-              </button>
+                <X size={14} />
+              </Button>
             </div>
           ))}
-          {workspaces.length === 0 && (
-            <p className="text-xs text-gray-600 px-2 py-1">Chưa có workspace</p>
-          )}
         </div>
 
         {/* Create workspace */}
         <div className="px-2 mt-1 mb-2">
           {creatingWorkspace ? (
-            <div className="space-y-1.5 p-2 bg-gray-800 rounded-lg">
-              <input
+            <div className="space-y-1.5">
+              <Input
                 autoFocus
-                type="text"
                 placeholder="Tên workspace..."
                 value={newWsName}
                 onChange={(e) => setNewWsName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleCreateWorkspace();
-                  if (e.key === "Escape") {
-                    setCreatingWorkspace(false);
-                    setNewWsName("");
-                  }
+                  if (e.key === "Escape") { setCreatingWorkspace(false); setNewWsName(""); }
                 }}
-                className="w-full bg-gray-700 text-white text-xs px-2 py-1.5 rounded border border-gray-600 outline-none focus:border-blue-400"
+                className="h-7 text-xs"
               />
               <div className="flex gap-1">
-                <button
+                <Button
+                  size="xs"
                   onClick={handleCreateWorkspace}
-                  className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 rounded"
+                  className="flex-1 text-xs"
+                  disabled={!newWsName.trim()}
                 >
                   Chọn thư mục
-                </button>
-                <button
-                  onClick={() => {
-                    setCreatingWorkspace(false);
-                    setNewWsName("");
-                  }}
-                  className="text-xs text-gray-500 px-2"
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => { setCreatingWorkspace(false); setNewWsName(""); }}
                 >
                   Huỷ
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCreatingWorkspace(true)}
-              className="w-full text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 py-1.5 px-2 rounded-lg transition-colors text-left"
+              className="w-full text-xs justify-start"
             >
               + Workspace mới
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      <div className="border-t border-gray-800 my-1" />
+      <div className="border-t" />
 
       {/* Sessions section */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="px-3 py-2 flex items-center justify-between flex-shrink-0">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Phiên làm việc
           </span>
           {activeWorkspace && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={handleNewSession}
-              className="text-gray-500 hover:text-gray-300 transition-colors"
               title="Phiên làm việc mới"
             >
               <Plus size={14} />
-            </button>
+            </Button>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-2">
           {!activeWorkspace && (
-            <p className="text-xs text-gray-600 px-2">
-              Chọn workspace để xem phiên làm việc
-            </p>
+            <p className="text-xs text-muted-foreground px-2">Chọn workspace để xem phiên làm việc</p>
           )}
           {sessions.map((session) => (
             <div
@@ -331,14 +306,14 @@ export default function WorkspaceSidebar({
                 setRenamingSessionId(session.id);
                 setRenameValue(session.name);
               }}
-              className={`group flex items-start justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
+              className={`group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors ${
                 activeSessionId === session.id
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-gray-800 text-gray-400"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "hover:bg-muted"
               }`}
             >
               {renamingSessionId === session.id ? (
-                <input
+                <Input
                   autoFocus
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
@@ -348,117 +323,106 @@ export default function WorkspaceSidebar({
                   }}
                   onBlur={() => handleRenameSession(session.id)}
                   onClick={(e) => e.stopPropagation()}
-                  className="flex-1 bg-gray-700 text-white text-xs px-1 py-0.5 rounded outline-none"
+                  className="flex-1 h-6 text-xs border-0 px-1 focus-visible:ring-0"
                 />
               ) : (
                 <>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs leading-tight truncate">
-                      {session.name}
-                    </p>
-                    <p
-                      className={`text-xs mt-0.5 ${activeSessionId === session.id ? "text-blue-200" : "text-gray-600"}`}
-                    >
+                    <p className="text-xs leading-tight truncate">{session.name}</p>
+                    <p className={`text-xs mt-0.5 ${activeSessionId === session.id ? "text-sidebar-primary-foreground/70" : "text-muted-foreground"}`}>
                       {formatDate(session.updatedAt)}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={(e) => handleDeleteSession(e, session.id)}
-                    className="opacity-0 group-hover:opacity-100 text-white hover:text-red-400 flex-shrink-0 -mr-1"
+                    className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0 -mr-1"
                   >
                     <X size={14} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>
           ))}
-          {activeWorkspace && sessions.length === 0 && (
-            <p className="text-xs text-gray-600 px-2">
-              Chưa có phiên làm việc nào
-            </p>
-          )}
         </div>
       </div>
 
       {/* Artifacts section */}
       {activeSessionId && (
-        <>
-          <div className="border-t border-gray-800 flex-shrink-0">
-            <button
-              onClick={() => setArtifactsOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-300 transition-colors"
-            >
-              <span>Tài liệu đã tạo</span>
+        <Collapsible open={artifactsOpen} onOpenChange={setArtifactsOpen}>
+          <div className="border-t flex-shrink-0">
+            <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider transition-colors">
+              <span>Tài liệu đã tạo {artifacts.length ? `(${artifacts.length})` : ""}</span>
               {artifactsOpen ? (
-                <ChevronDown size={14} className="text-gray-600" />
+                <ChevronDown size={14} />
               ) : (
-                <ChevronRight size={14} className="text-gray-600" />
+                <ChevronRight size={14} />
               )}
-            </button>
+            </CollapsibleTrigger>
           </div>
-          {artifactsOpen && (
+          <CollapsibleContent>
             <div className="flex-shrink-0 max-h-44 overflow-y-auto px-2 pb-2 space-y-0.5">
               {artifacts.length === 0 && (
-                <p className="text-xs text-gray-600 px-2 py-1">
-                  Chưa có tài liệu nào
-                </p>
+                <p className="text-xs text-muted-foreground py-1 px-2">Chưa có tài liệu nào</p>
               )}
               {artifacts.map((artifact) => {
-                const ArtifactIcon =
-                  artifact.type === "pdf"
-                    ? FileText
-                    : artifact.type === "docx"
-                      ? FileEdit
-                      : ClipboardList;
+                const getExtColor = (type: string) => {
+                  switch (type.toLowerCase()) {
+                    case "pdf": return "bg-destructive text-white";
+                    case "docx": return "bg-blue-600 text-white";
+                    case "md": return "bg-primary text-primary-foreground";
+                    default: return "bg-slate-600 text-white";
+                  }
+                };
+
                 return (
                   <div
                     key={artifact.id}
                     onClick={() =>
-                      onPreviewArtifact(
-                        artifact.filePath,
-                        artifact.type,
-                        artifact.fileName,
-                      )
+                      onPreviewArtifact(artifact.filePath, artifact.type, artifact.fileName)
                     }
-                    className="group flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
+                    className="group flex items-center px-2 py-1.5 cursor-pointer hover:bg-muted transition-colors"
                   >
-                    <ArtifactIcon
-                      size={14}
-                      className="flex-shrink-0 text-gray-500"
-                    />
-                    <span className="text-xs text-gray-400 group-hover:text-gray-200 truncate flex-1">
+                    <Badge
+                      className={`${getExtColor(artifact.type)} text-[0.6rem]`}
+                    >
+                      {artifact.type}
+                    </Badge>
+                    <span className="text-xs truncate flex-1 ml-1.5">
                       {artifact.fileName}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.api.openFile(artifact.filePath);
-                      }}
-                      title="Mở ngoài"
-                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-blue-400 flex-shrink-0 px-0.5"
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      title="Mở bằng ứng dụng mặc định"
+                      onClick={(e) => { e.stopPropagation(); window.api.openFile(artifact.filePath); }}
+                      className="opacity-0 group-hover:opacity-100 hover:text-sidebar-primary hover:bg-transparent flex-shrink-0"
                     >
                       <ExternalLink size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteArtifact(e, artifact)}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
                       title="Xoá khỏi danh sách"
-                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 flex-shrink-0 px-0.5"
+                      onClick={(e) => handleDeleteArtifact(e, artifact)}
+                      className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0"
                     >
                       <X size={10} />
-                    </button>
+                    </Button>
                   </div>
                 );
               })}
             </div>
-          )}
-        </>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* Settings button */}
-      <div className="border-t border-gray-800 p-2 flex-shrink-0">
+      <div className="border-t p-2 flex-shrink-0">
         <button
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 p-2 text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-colors text-sm"
+          className="w-full flex items-center gap-2 p-2 hover:bg-muted transition-colors text-sm"
         >
           <Settings size={14} />
           <span>Cài đặt</span>

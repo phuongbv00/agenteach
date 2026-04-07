@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { HitlRequest, PermissionScope } from '../types/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export default function HitlApprovalDialog() {
   const [request, setRequest] = useState<HitlRequest | null>(null);
@@ -9,59 +16,68 @@ export default function HitlApprovalDialog() {
     return () => window.api.offApprovalRequest();
   }, []);
 
-  if (!request) return null;
-
   const reply = (approved: boolean, scope: PermissionScope) => {
+    if (!request) return;
     window.api.replyApproval(request.replyChannel, approved, scope);
     setRequest(null);
   };
+
+  if (!request) return null;
 
   const actionLabel = request.action === 'read' ? 'đọc' : 'ghi';
   const fileName = request.filePath.split('/').pop() ?? request.filePath;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4 mx-4">
-        <div>
-          <h3 className="font-semibold text-gray-800">
-            Cho phép {actionLabel} file?
-          </h3>
-          <p className="text-sm text-gray-500 mt-1 break-all">
-            <span className="font-mono bg-gray-100 px-1 rounded text-xs">{fileName}</span>
-          </p>
-          <p className="text-xs text-gray-400 mt-1 break-all">{request.filePath}</p>
-        </div>
+    <Dialog open onOpenChange={() => reply(false, 'once')}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Cho phép {actionLabel} file?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground break-all">
+          <span className="font-mono bg-muted px-1 rounded text-xs">{fileName}</span>
+        </p>
+        <p className="text-xs text-muted-foreground break-all">{request.filePath}</p>
 
-        <div className="space-y-2">
-          <button
+        <div className="space-y-2 pt-2">
+          <Button
+            variant="outline"
+            className="w-full justify-start h-auto py-2.5"
             onClick={() => reply(true, 'once')}
-            className="w-full text-left px-4 py-2.5 rounded-lg border hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm"
           >
-            <span className="font-medium">Cho phép lần này</span>
-            <span className="block text-xs text-gray-400">Lần sau sẽ hỏi lại</span>
-          </button>
-          <button
+            <div className="text-left">
+              <p className="font-medium text-sm">Cho phép lần này</p>
+              <p className="text-xs text-muted-foreground font-normal">Lần sau sẽ hỏi lại</p>
+            </div>
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start h-auto py-2.5"
             onClick={() => reply(true, 'session')}
-            className="w-full text-left px-4 py-2.5 rounded-lg border hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm"
           >
-            <span className="font-medium">Cho phép cả session</span>
-            <span className="block text-xs text-gray-400">Không hỏi lại cho đến khi đóng app</span>
-          </button>
-          <button
+            <div className="text-left">
+              <p className="font-medium text-sm">Cho phép cả session</p>
+              <p className="text-xs text-muted-foreground font-normal">Không hỏi lại cho đến khi đóng app</p>
+            </div>
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-start h-auto py-2.5 border-primary/20 hover:bg-primary/5 hover:border-primary/40"
             onClick={() => reply(true, 'always')}
-            className="w-full text-left px-4 py-2.5 rounded-lg border hover:bg-green-50 hover:border-green-300 transition-colors text-sm"
           >
-            <span className="font-medium">Luôn cho phép</span>
-            <span className="block text-xs text-gray-400">Lưu lại, không hỏi nữa</span>
-          </button>
-          <button
+            <div className="text-left">
+              <p className="font-medium text-sm">Luôn cho phép</p>
+              <p className="text-xs text-muted-foreground font-normal">Lưu lại, không hỏi nữa</p>
+            </div>
+          </Button>
+          <Button
+            variant="destructive"
+            className="w-full"
             onClick={() => reply(false, 'once')}
-            className="w-full text-left px-4 py-2.5 rounded-lg border border-red-100 hover:bg-red-50 transition-colors text-sm text-red-600"
           >
             Từ chối
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
