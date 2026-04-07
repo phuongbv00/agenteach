@@ -58,10 +58,25 @@ export class WorkspaceIndex {
     }
   }
 
-  /** Tìm file/folder theo tên (substring, case-insensitive) */
+  /** Tìm file/folder theo tên (token-based, case-insensitive).
+   *  Query được tách thành các từ; tên file được normalize (-, _, . → space).
+   *  Kết quả gồm: match tất cả token (ưu tiên cao) + match ít nhất 1 token. */
   find(query: string): IndexEntry[] {
-    const lq = query.toLowerCase();
-    return this.entries.filter(e => e.name.toLowerCase().includes(lq));
+    const normalize = (s: string) => s.toLowerCase().replace(/[-_.]/g, ' ');
+    const tokens = normalize(query).split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return [];
+
+    const allMatch: IndexEntry[] = [];
+    const anyMatch: IndexEntry[] = [];
+
+    for (const e of this.entries) {
+      const norm = normalize(e.name);
+      const matchCount = tokens.filter(t => norm.includes(t)).length;
+      if (matchCount === tokens.length) allMatch.push(e);
+      else if (matchCount > 0) anyMatch.push(e);
+    }
+
+    return [...allMatch, ...anyMatch];
   }
 
   /** Liệt kê con trực tiếp của một thư mục */

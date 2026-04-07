@@ -77,7 +77,7 @@ Bạn có thể dùng các tools sau:
 - find_files: tìm file/folder theo tên (dùng index, nhanh) — ƯU TIÊN dùng khi tìm kiếm
 - list_directory: liệt kê file trong một thư mục cụ thể
 - read_file: đọc nội dung file (.txt, .md, .docx, .pdf)
-- search_files: tìm kiếm văn bản bên trong các file
+- search_in_files: tìm kiếm văn bản bên trong các file
 
 Tạo tài liệu (PHẢI dùng khi user yêu cầu soạn/tạo/xuất tài liệu):
 - create_markdown: tạo file .md — dùng khi user muốn file Markdown/ghi chú/lecture notes

@@ -108,7 +108,7 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
     }),
 
     find_files: tool({
-      description: 'Tìm kiếm file hoặc thư mục theo tên trong workspace (dùng index, nhanh). Dùng tool này khi cần tìm file/folder theo tên thay vì list_directory.',
+      description: 'Tìm kiếm file hoặc thư mục theo tên trong workspace (dùng index, nhanh). Query được tách thành token và so khớp linh hoạt với tên file (VD: "Spring Web" khớp "spring-web.docx", "spring-boot.pdf"). Dùng tool này khi cần tìm file/folder theo tên thay vì list_directory.',
       inputSchema: zodSchema(z.object({
         query: z.string().describe('Tên file hoặc thư mục cần tìm (có thể là một phần của tên)'),
         type: z.enum(['file', 'dir', 'all']).optional().describe('Loại: "file" chỉ tìm file, "dir" chỉ tìm thư mục, "all" tìm cả hai (mặc định)'),
@@ -167,7 +167,7 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
       },
     }),
 
-    search_files: tool({
+    search_in_files: tool({
       description: 'Tìm kiếm nội dung văn bản trong các file của workspace',
       inputSchema: zodSchema(z.object({
         query: z.string().describe('Chuỗi cần tìm kiếm'),

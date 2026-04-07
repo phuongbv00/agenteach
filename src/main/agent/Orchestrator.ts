@@ -77,7 +77,7 @@ export async function runAgent(
         find_files: fileTools.find_files,
         read_file: fileTools.read_file,
         write_file: fileTools.write_file,
-        search_files: fileTools.search_files,
+        search_in_files: fileTools.search_in_files,
         create_markdown: exportTools.create_markdown,
         create_pdf: exportTools.create_pdf,
         create_docx: exportTools.create_docx,
@@ -220,7 +220,7 @@ function toolLabel(toolName: string, args: Record<string, unknown>): string {
       return `Đọc file: ${args.file_path ?? ""}`;
     case "write_file":
       return `Ghi file: ${args.file_path ?? ""}`;
-    case "search_files":
+    case "search_in_files":
       return `Tìm kiếm: "${args.query ?? ""}"`;
     case "create_markdown":
       return `Tạo file Markdown: ${args.file_path ?? ""}`;

@@ -40,7 +40,8 @@ const TOOL_ICONS: Record<string, string> = {
   list_directory: "📂",
   read_file: "📄",
   write_file: "✏️",
-  search_files: "🔍",
+  search_in_files: "🔍",
+  find_files: "🔍",
   update_memory: "🧠",
   get_date: "📅",
 };
@@ -51,7 +52,7 @@ interface ToolCallBubbleProps {
 
 export function ToolCallBubble({ item }: ToolCallBubbleProps) {
   const [expanded, setExpanded] = useState(false);
-  const icon = TOOL_ICONS[item.toolName] ?? "⚙️";
+  const icon = TOOL_ICONS[item.toolName] ?? "";
 
   return (
     <div className="mb-1.5">
@@ -186,7 +187,11 @@ interface StreamingBubbleProps {
   isWaitingForText?: boolean;
 }
 
-export function StreamingBubble({ content, reasoning, isWaitingForText }: StreamingBubbleProps) {
+export function StreamingBubble({
+  content,
+  reasoning,
+  isWaitingForText,
+}: StreamingBubbleProps) {
   const parsed = parseThinking(content);
   const thinkingText = reasoning || parsed.thinking;
   // After text-start, reasoning is done — don't show it as still-open
