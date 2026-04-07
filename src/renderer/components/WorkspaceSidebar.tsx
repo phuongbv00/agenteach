@@ -1,4 +1,16 @@
 import React, { useState, useEffect } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  ExternalLink,
+  FileEdit,
+  FileText,
+  Folder,
+  Plus,
+  Settings,
+  X,
+} from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import { useChatStore } from "../stores/chatStore";
 import type { Workspace, Session, Artifact } from "../types/api";
@@ -31,7 +43,9 @@ export default function WorkspaceSidebar({
 
   const [creatingWorkspace, setCreatingWorkspace] = useState(false);
   const [newWsName, setNewWsName] = useState("");
-  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(
+    null,
+  );
   const [renameValue, setRenameValue] = useState("");
   const [artifactsOpen, setArtifactsOpen] = useState(true);
 
@@ -47,16 +61,25 @@ export default function WorkspaceSidebar({
   // Load artifacts when session changes
   useEffect(() => {
     if (activeWorkspace && activeSessionId) {
-      window.api.listArtifacts(activeWorkspace.id, activeSessionId).then(setArtifacts);
+      window.api
+        .listArtifacts(activeWorkspace.id, activeSessionId)
+        .then(setArtifacts);
     } else {
       setArtifacts([]);
     }
   }, [activeWorkspace?.id, activeSessionId]);
 
-  const handleDeleteArtifact = async (e: React.MouseEvent, artifact: Artifact) => {
+  const handleDeleteArtifact = async (
+    e: React.MouseEvent,
+    artifact: Artifact,
+  ) => {
     e.stopPropagation();
     if (!activeWorkspace || !activeSessionId) return;
-    await window.api.deleteArtifact(activeWorkspace.id, activeSessionId, artifact.id);
+    await window.api.deleteArtifact(
+      activeWorkspace.id,
+      activeSessionId,
+      artifact.id,
+    );
     removeArtifact(artifact.id);
   };
 
@@ -211,14 +234,14 @@ export default function WorkspaceSidebar({
               }`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm">📁</span>
+                <Folder size={14} className="flex-shrink-0" />
                 <span className="text-sm truncate">{ws.name}</span>
               </div>
               <button
                 onClick={(e) => handleDeleteWorkspace(e, ws.id)}
-                className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs px-1 flex-shrink-0"
+                className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 px-1 flex-shrink-0"
               >
-                ✕
+                <X size={10} />
               </button>
             </div>
           ))}
@@ -286,10 +309,10 @@ export default function WorkspaceSidebar({
           {activeWorkspace && (
             <button
               onClick={handleNewSession}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-gray-500 hover:text-gray-300 transition-colors"
               title="Phiên làm việc mới"
             >
-              ＋
+              <Plus size={14} />
             </button>
           )}
         </div>
@@ -341,9 +364,9 @@ export default function WorkspaceSidebar({
                   </div>
                   <button
                     onClick={(e) => handleDeleteSession(e, session.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs px-1 flex-shrink-0 mt-0.5"
+                    className="opacity-0 group-hover:opacity-100 text-white hover:text-red-400 flex-shrink-0 -mr-1"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </>
               )}
@@ -366,39 +389,62 @@ export default function WorkspaceSidebar({
               className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-300 transition-colors"
             >
               <span>Tài liệu đã tạo</span>
-              <span className="text-gray-600">{artifactsOpen ? "▾" : "▸"}</span>
+              {artifactsOpen ? (
+                <ChevronDown size={14} className="text-gray-600" />
+              ) : (
+                <ChevronRight size={14} className="text-gray-600" />
+              )}
             </button>
           </div>
           {artifactsOpen && (
             <div className="flex-shrink-0 max-h-44 overflow-y-auto px-2 pb-2 space-y-0.5">
               {artifacts.length === 0 && (
-                <p className="text-xs text-gray-600 px-2 py-1">Chưa có tài liệu nào</p>
+                <p className="text-xs text-gray-600 px-2 py-1">
+                  Chưa có tài liệu nào
+                </p>
               )}
               {artifacts.map((artifact) => {
-                const icon = artifact.type === "pdf" ? "📄" : artifact.type === "docx" ? "📝" : "📋";
+                const ArtifactIcon =
+                  artifact.type === "pdf"
+                    ? FileText
+                    : artifact.type === "docx"
+                      ? FileEdit
+                      : ClipboardList;
                 return (
                   <div
                     key={artifact.id}
-                    onClick={() => onPreviewArtifact(artifact.filePath, artifact.type, artifact.fileName)}
+                    onClick={() =>
+                      onPreviewArtifact(
+                        artifact.filePath,
+                        artifact.type,
+                        artifact.fileName,
+                      )
+                    }
                     className="group flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors"
                   >
-                    <span className="text-sm flex-shrink-0">{icon}</span>
+                    <ArtifactIcon
+                      size={14}
+                      className="flex-shrink-0 text-gray-500"
+                    />
                     <span className="text-xs text-gray-400 group-hover:text-gray-200 truncate flex-1">
                       {artifact.fileName}
                     </span>
                     <button
-                      onClick={(e) => { e.stopPropagation(); window.api.openFile(artifact.filePath); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.api.openFile(artifact.filePath);
+                      }}
                       title="Mở ngoài"
-                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-blue-400 text-xs flex-shrink-0 px-0.5"
+                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-blue-400 flex-shrink-0 px-0.5"
                     >
-                      ↗
+                      <ExternalLink size={12} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteArtifact(e, artifact)}
                       title="Xoá khỏi danh sách"
-                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs flex-shrink-0 px-0.5"
+                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 flex-shrink-0 px-0.5"
                     >
-                      ✕
+                      <X size={10} />
                     </button>
                   </div>
                 );
@@ -414,7 +460,7 @@ export default function WorkspaceSidebar({
           onClick={onOpenSettings}
           className="w-full flex items-center gap-2 px-3 py-2 text-gray-500 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-colors text-sm"
         >
-          <span>⚙️</span>
+          <Settings size={14} />
           <span>Cài đặt</span>
         </button>
       </div>

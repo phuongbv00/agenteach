@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Folder, X } from "lucide-react";
 import type { AIProvider } from "../types/api";
 import iconUrl from "../assets/icon.jpeg";
 
@@ -187,7 +188,7 @@ export default function SetupWizard({ onComplete }: Props) {
                         : "bg-gray-100 text-gray-400"
                   }`}
                 >
-                  {i < currentIdx ? "✓" : i + 1}
+                  {i < currentIdx ? <Check size={14} /> : i + 1}
                 </div>
                 <span
                   className={`text-xs mt-1 ${i === currentIdx ? "text-blue-500 font-medium" : "text-gray-400"}`}
@@ -287,7 +288,7 @@ export default function SetupWizard({ onComplete }: Props) {
 
             {connectionOk === true && (
               <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm flex items-center gap-2">
-                ✅ <span>Kết nối thành công!</span>
+                <CheckCircle2 size={16} /> <span>Kết nối thành công!</span>
               </div>
             )}
             {connectionOk === false && (
@@ -378,7 +379,7 @@ export default function SetupWizard({ onComplete }: Props) {
                 onClick={goBack}
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
               >
-                ← Quay lại
+                <ArrowLeft size={14} /> Quay lại
               </button>
               <button
                 onClick={handleModelNext}
@@ -440,14 +441,14 @@ export default function SetupWizard({ onComplete }: Props) {
                 onClick={goBack}
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
               >
-                ← Quay lại
+                <ArrowLeft size={14} /> Quay lại
               </button>
               <button
                 onClick={handleFinish}
                 disabled={!teacherName.trim()}
                 className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
               >
-                Tiếp tục →
+                Tiếp tục <ArrowRight size={14} />
               </button>
             </div>
           </div>
@@ -483,15 +484,15 @@ export default function SetupWizard({ onComplete }: Props) {
 
               {wsPath ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <span className="text-green-600">📁</span>
+                  <Folder size={14} className="text-green-600 flex-shrink-0" />
                   <span className="text-sm text-green-700 font-mono truncate flex-1">
                     {wsPath}
                   </span>
                   <button
                     onClick={() => setWsPath("")}
-                    className="text-xs text-gray-400 hover:text-red-500"
+                    className="text-gray-400 hover:text-red-500"
                   >
-                    ✕
+                    <X size={12} />
                   </button>
                 </div>
               ) : (
@@ -499,7 +500,7 @@ export default function SetupWizard({ onComplete }: Props) {
                   onClick={handlePickFolder}
                   className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 rounded-xl text-sm text-gray-500 hover:text-blue-600 transition-colors"
                 >
-                  <span>📁</span> Chọn thư mục...
+                  <Folder size={14} /> Chọn thư mục...
                 </button>
               )}
             </div>
@@ -509,7 +510,7 @@ export default function SetupWizard({ onComplete }: Props) {
                 onClick={goBack}
                 className="px-4 py-2.5 text-gray-500 hover:text-gray-700 border rounded-xl text-sm transition-colors"
               >
-                ← Quay lại
+                <ArrowLeft size={14} /> Quay lại
               </button>
               <button
                 onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
@@ -519,7 +520,7 @@ export default function SetupWizard({ onComplete }: Props) {
                 {wsCreating
                   ? "Đang tạo..."
                   : wsPath
-                    ? "Bắt đầu sử dụng ✓"
+                    ? <span className="flex items-center justify-center gap-1">Bắt đầu sử dụng <Check size={14} /></span>
                     : "Chọn thư mục..."}
               </button>
             </div>

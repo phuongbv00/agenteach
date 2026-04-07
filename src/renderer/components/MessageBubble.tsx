@@ -1,4 +1,14 @@
 import React, { useState } from "react";
+import {
+  Brain,
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  FolderOpen,
+  Pencil,
+  Search,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -36,14 +46,14 @@ function parseThinking(raw: string): ParsedContent {
 }
 
 // ── ToolCallBubble ───────────────────────────────────────────────────────────
-const TOOL_ICONS: Record<string, string> = {
-  list_directory: "📂",
-  read_file: "📄",
-  write_file: "✏️",
-  search_in_files: "🔍",
-  find_files: "🔍",
-  update_memory: "🧠",
-  get_date: "📅",
+const TOOL_ICON_MAP: Record<string, React.ReactNode> = {
+  list_directory: <FolderOpen size={12} />,
+  read_file: <FileText size={12} />,
+  write_file: <Pencil size={12} />,
+  search_in_files: <Search size={12} />,
+  find_files: <Search size={12} />,
+  update_memory: <Brain size={12} />,
+  get_date: <CalendarDays size={12} />,
 };
 
 interface ToolCallBubbleProps {
@@ -52,7 +62,7 @@ interface ToolCallBubbleProps {
 
 export function ToolCallBubble({ item }: ToolCallBubbleProps) {
   const [expanded, setExpanded] = useState(false);
-  const icon = TOOL_ICONS[item.toolName] ?? "";
+  const icon = TOOL_ICON_MAP[item.toolName] ?? null;
 
   return (
     <div className="mb-1.5">
@@ -60,13 +70,17 @@ export function ToolCallBubble({ item }: ToolCallBubbleProps) {
         onClick={() => setExpanded((v) => !v)}
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors py-0.5"
       >
-        <span className="text-gray-300">{expanded ? "▼" : "▶"}</span>
+        {expanded ? (
+          <ChevronDown size={12} className="text-gray-300" />
+        ) : (
+          <ChevronRight size={12} className="text-gray-300" />
+        )}
         <span>{icon}</span>
         <span>{item.label}</span>
       </button>
 
       {expanded && (
-        <div className="mt-1 ml-4 bg-gray-50 border-l-2 border-gray-200 overflow-hidden text-xs">
+        <div className="mt-1 bg-gray-50 border-l-2 border-gray-200 overflow-hidden text-xs">
           {Object.keys(item.args).length > 0 && (
             <div className="px-3 py-2 border-b border-gray-100">
               <p
@@ -118,7 +132,11 @@ export function ReasoningBubble({ item, isOpen }: ReasoningBubbleProps) {
         onClick={() => setExpanded((v) => !v)}
         className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors py-0.5"
       >
-        <span className="text-gray-300">{expanded ? "▼" : "▶"}</span>
+        {expanded ? (
+          <ChevronDown size={12} className="text-gray-300" />
+        ) : (
+          <ChevronRight size={12} className="text-gray-300" />
+        )}
         <span className="italic">
           {isOpen ? "Đang suy nghĩ" : "Dòng suy nghĩ"}
         </span>

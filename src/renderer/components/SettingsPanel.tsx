@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from "react";
+import {
+  Brain,
+  Check,
+  CheckCircle2,
+  LifeBuoy,
+  Pencil,
+  Plug,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import type { AllMemory, MemoryLayer, AIProvider } from "../types/api";
 import { randomUUID } from "../utils/uuid";
@@ -48,7 +58,7 @@ function ListEditor({
               onClick={() => onRemove(i)}
               className="text-gray-400 hover:text-red-500 px-2"
             >
-              ✕
+              <X size={14} />
             </button>
           </div>
         ))}
@@ -221,9 +231,15 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   const TAB_LABELS: Record<Tab, string> = {
-    connection: "🔌 Kết nối AI",
-    memory: "🧠 Bộ nhớ",
-    support: "🛟 Hỗ trợ",
+    connection: "Kết nối AI",
+    memory: "Bộ nhớ",
+    support: "Hỗ trợ",
+  };
+
+  const TAB_ICONS: Record<Tab, React.ReactNode> = {
+    connection: <Plug size={14} />,
+    memory: <Brain size={14} />,
+    support: <LifeBuoy size={14} />,
   };
 
   return (
@@ -237,9 +253,9 @@ export default function SettingsPanel({ onClose }: Props) {
           <h2 className="text-base font-semibold text-gray-800">Cài đặt</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-400 hover:text-gray-600"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -249,12 +265,13 @@ export default function SettingsPanel({ onClose }: Props) {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 tab === t
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
+              {TAB_ICONS[t]}
               {TAB_LABELS[t]}
             </button>
           ))}
@@ -307,16 +324,16 @@ export default function SettingsPanel({ onClose }: Props) {
                       </div>
                       <button
                         onClick={() => setEditingProvider({ ...p })}
-                        className="text-xs text-gray-400 hover:text-blue-500 px-1"
+                        className="text-gray-400 hover:text-blue-500 px-1"
                       >
-                        ✏
+                        <Pencil size={12} />
                       </button>
                       {providers.length > 1 && (
                         <button
                           onClick={() => handleDeleteProvider(p.id)}
-                          className="text-xs text-gray-400 hover:text-red-500 px-1"
+                          className="text-gray-400 hover:text-red-500 px-1"
                         >
-                          ✕
+                          <X size={12} />
                         </button>
                       )}
                     </div>
@@ -381,13 +398,13 @@ export default function SettingsPanel({ onClose }: Props) {
                       {checking ? "Đang kiểm tra..." : "Kiểm tra kết nối"}
                     </button>
                     {checkResult === "ok" && (
-                      <span className="text-xs text-green-600 self-center">
-                        ✅ OK
+                      <span className="flex items-center gap-1 text-xs text-green-600 self-center">
+                        <CheckCircle2 size={14} /> OK
                       </span>
                     )}
                     {checkResult === "fail" && (
-                      <span className="text-xs text-red-600 self-center">
-                        ❌ Lỗi
+                      <span className="flex items-center gap-1 text-xs text-red-600 self-center">
+                        <XCircle size={14} /> Lỗi
                       </span>
                     )}
                     <div className="flex-1" />
@@ -477,8 +494,8 @@ export default function SettingsPanel({ onClose }: Props) {
                     {exporting ? "Đang xuất..." : "Tải xuống logs"}
                   </button>
                   {exportResult === "ok" && (
-                    <span className="text-xs text-green-600">
-                      ✓ Đã lưu file
+                    <span className="flex items-center gap-1 text-xs text-green-600">
+                      <Check size={14} /> Đã lưu file
                     </span>
                   )}
                   {exportResult === "cancel" && (
@@ -649,7 +666,7 @@ export default function SettingsPanel({ onClose }: Props) {
               disabled={memSaving}
               className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-xl disabled:opacity-50 transition-colors"
             >
-              {memSaved ? "✓ Đã lưu" : memSaving ? "Đang lưu..." : "Lưu"}
+              {memSaved ? <span className="flex items-center gap-1"><Check size={14} /> Đã lưu</span> : memSaving ? "Đang lưu..." : "Lưu"}
             </button>
           )}
         </div>

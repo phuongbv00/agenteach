@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { ArrowUp, ChevronDown, FolderOpen, GraduationCap, Plus, Square } from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
 import { useAppStore } from "../stores/appStore";
 import {
@@ -129,7 +130,11 @@ export default function ChatPanel() {
 
     const allMessages = [...toMessages(), { role: "user" as const, content }];
     window.api
-      .sendMessage(allMessages, activeSessionId ?? undefined, selectedModel || undefined)
+      .sendMessage(
+        allMessages,
+        activeSessionId ?? undefined,
+        selectedModel || undefined,
+      )
       .catch(() => finalizeAssistantMessage());
   };
 
@@ -144,7 +149,7 @@ export default function ChatPanel() {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50">
         <div className="text-center space-y-3">
-          <p className="text-5xl">📁</p>
+          <FolderOpen size={48} className="text-gray-300" />
           <p className="text-sm font-medium">
             Chọn hoặc tạo workspace để bắt đầu
           </p>
@@ -166,7 +171,7 @@ export default function ChatPanel() {
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36">
         {items.length === 0 && !isStreaming && (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-            <p className="text-5xl">👩‍🏫</p>
+            <GraduationCap size={48} className="text-gray-300" />
             <div className="text-center">
               <p className="text-sm font-medium text-gray-600">
                 Tôi có thể giúp gì cho bạn hôm nay?
@@ -283,7 +288,7 @@ export default function ChatPanel() {
       {/* Floating input */}
       <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none">
         <div className="max-w-2xl mx-auto pointer-events-auto">
-          <div className="bg-white rounded-lg shadow-lg p-3 border">
+          <div className="bg-white rounded-xl shadow-lg p-3 border">
             <textarea
               ref={textareaRef}
               value={input}
@@ -304,40 +309,17 @@ export default function ChatPanel() {
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
                 disabled
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <Plus size={16} />
               </button>
               <div className="flex-1" />
               <div className="relative" data-model-menu>
                 <button
                   ref={modelBtnRef}
                   onClick={() => setModelMenuOpen((o) => !o)}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-xl hover:bg-gray-100"
                 >
                   <span>{modelLabel}</span>
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <ChevronDown size={12} />
                 </button>
                 {modelMenuOpen && (
                   <div className="absolute bottom-full right-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-56 overflow-y-auto z-50">
@@ -361,36 +343,17 @@ export default function ChatPanel() {
               {isStreaming ? (
                 <button
                   onClick={() => window.api.cancelMessage()}
-                  className="w-8 h-8 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors flex-shrink-0"
+                  className="w-8 h-8 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors flex-shrink-0"
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <rect x="6" y="6" width="12" height="12" rx="1" />
-                  </svg>
+                  <Square size={14} fill="currentColor" strokeWidth={0} />
                 </button>
               ) : (
                 <button
                   onClick={send}
                   disabled={!input.trim()}
-                  className="w-8 h-8 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 text-white rounded-lg transition-colors flex-shrink-0"
+                  className="w-8 h-8 flex items-center justify-center bg-blue-500 hover:bg-blue-600 disabled:bg-gray-200 text-white rounded-xl transition-colors flex-shrink-0"
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="12" y1="19" x2="12" y2="5" />
-                    <polyline points="5 12 12 5 19 12" />
-                  </svg>
+                  <ArrowUp size={14} strokeWidth={2.5} />
                 </button>
               )}
             </div>
