@@ -9,7 +9,10 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    name: 'Agenteach',
+    executableName: 'agenteach',
+    appBundleId: 'com.agenteach.app',
+    asar: { unpack: '**/*.node' },
   },
   rebuildConfig: {},
   makers: [

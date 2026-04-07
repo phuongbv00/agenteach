@@ -1,56 +1,78 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
+import { spawn } from 'child_process';
 import started from 'electron-squirrel-startup';
+import { registerHandlers } from './main/ipc/handlers';
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
-  app.quit();
+if (started) app.quit();
+
+let mainWindow: BrowserWindow | null = null;
+let ollamaProcess: ReturnType<typeof spawn> | null = null;
+
+async function tryStartOllama(): Promise<void> {
+  try {
+    const res = await fetch('http://localhost:11434/api/tags', {
+      signal: AbortSignal.timeout(2000),
+    });
+    if (res.ok) return;
+  } catch {
+    // not running, try to start
+  }
+
+  const candidates =
+    process.platform === 'win32'
+      ? [path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Ollama', 'ollama.exe')]
+      : ['/usr/local/bin/ollama', '/usr/bin/ollama', '/opt/homebrew/bin/ollama'];
+
+  for (const bin of candidates) {
+    try {
+      ollamaProcess = spawn(bin, ['serve'], { detached: false, stdio: 'ignore' });
+      ollamaProcess.unref();
+      break;
+    } catch {
+      // try next candidate
+    }
+  }
 }
 
 const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    title: 'Agenteach',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
     );
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  registerHandlers(mainWindow);
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  await tryStartOllama();
+  createWindow();
+});
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+app.on('before-quit', () => {
+  ollamaProcess?.kill();
+});

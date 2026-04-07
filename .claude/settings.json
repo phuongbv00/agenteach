@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm list:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(npm start:*)",
+      "Bash(kill %1)",
+      "Bash(node -e \"const {createOpenAI} = require\\('@ai-sdk/openai'\\); console.log\\('ok'\\)\")",
+      "Bash(node -e \"console.log\\(require\\('@ai-sdk/openai/package.json'\\).version, require\\('ai/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('@ai-sdk/openai/package.json'\\).version\\)\")",
+      "Bash(node -e \"const {streamText} = require\\('ai'\\); const fn = streamText.toString\\(\\).slice\\(0,500\\); console.log\\(fn\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(ls node_modules/ai/dist/*.d.ts)",
+      "Bash(grep -rn \"interface Tool\\\\b\" node_modules/@ai-sdk/ui-utils/dist/*.d.ts node_modules/@ai-sdk/provider-utils/dist/*.d.ts)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx vite build --config vite.renderer.config.ts)",
+      "Bash(npm info:*)",
+      "Read(//Users/phuongbv/.agenteach/sessions/a9348906-3fba-49a2-94c1-2e0deaf26e14/**)"
+    ]
+  }
+}
