@@ -26,11 +26,9 @@ export default function ChatPanel() {
     reasoningContent,
     pendingItems,
     pendingToolCall,
-    isWaitingForText,
     addUserMessage,
     appendToken,
     appendReasoning,
-    setWaitingForText,
     addToolCallStart,
     addToolCall,
     finalizeAssistantMessage,
@@ -61,7 +59,7 @@ export default function ChatPanel() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [items, streamingContent, reasoningContent, pendingItems, isWaitingForText]);
+  }, [items, streamingContent, reasoningContent, pendingItems]);
 
   // Save session after each completed turn
   useEffect(() => {
@@ -78,7 +76,6 @@ export default function ChatPanel() {
     window.api.offAgentEvents();
     window.api.onToken((token) => appendToken(token));
     window.api.onReasoning((text) => appendReasoning(text));
-    window.api.onTextStart(() => setWaitingForText());
     window.api.onToolCallStart((event) => {
       setFileProgress(null);
       addToolCallStart(event as Omit<ToolCallEvent, "result">);
@@ -143,13 +140,10 @@ export default function ChatPanel() {
       <div className="border-b flex items-center p-2 bg-background/50 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="p-2 bg-muted text-muted-foreground">
-            <FolderOpen size={18} />
+            <FolderOpen size={20} />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold truncate tracking-tight">
-              {activeWorkspace.name}
-            </span>
-            <span className="text-xs text-muted-foreground truncate mt-0.5">
+            <span className="text-sm text-muted-foreground truncate">
               {activeWorkspace.path}
             </span>
           </div>
@@ -221,32 +215,21 @@ export default function ChatPanel() {
               );
             })}
             {pendingToolCall && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1 mb-1">
-                <span className="inline-flex gap-0.5">
-                  <span className="w-1 h-1 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1 h-1 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1 h-1 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </span>
-                <span>{pendingToolCall.label}</span>
-              </div>
-            )}
-            {fileProgress && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-1 mb-1">
-                <span className="inline-flex gap-0.5">
-                  <span className="w-1 h-1 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-1 h-1 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-1 h-1 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                </span>
-                <span>
-                  {fileProgress.stage === "reading" ? "Đang đọc" : "Đang phân tích"}{" "}
-                  <span className="font-mono text-muted-foreground">{fileProgress.fileName}</span>
-                </span>
-              </div>
+              <ToolCallBubble
+                item={{
+                  type: "tool_call",
+                  id: "pending",
+                  toolName: pendingToolCall.toolName,
+                  label: pendingToolCall.label,
+                  args: pendingToolCall.args,
+                  result: "",
+                }}
+                isLoading
+              />
             )}
             <StreamingBubble
               content={streamingContent}
               reasoning={reasoningContent}
-              isWaitingForText={isWaitingForText}
             />
           </>
         )}
@@ -311,7 +294,10 @@ export default function ChatPanel() {
                   size="icon-sm"
                   variant="destructive"
                   className="rounded-xl flex-shrink-0"
-                  onClick={() => window.api.cancelMessage()}
+                  onClick={() => {
+                    finalizeAssistantMessage();
+                    window.api.cancelMessage();
+                  }}
                 >
                   <Square size={14} fill="currentColor" strokeWidth={0} />
                 </Button>

@@ -66,7 +66,7 @@ export function ExpandableBubble({
         ) : (
           <ChevronRight size={12} />
         )}
-        {label}
+        <span className="text-left">{label}</span>
         {isThinking && (
           <span className="inline-flex gap-0.5 ml-1">
             <span
@@ -97,9 +97,10 @@ export function ExpandableBubble({
 // ── ToolCallBubble ───────────────────────────────────────────────────────────
 interface ToolCallBubbleProps {
   item: ToolCallItem;
+  isLoading?: boolean;
 }
 
-export function ToolCallBubble({ item }: ToolCallBubbleProps) {
+export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
   const label = (
     <div className="flex items-center gap-1.5">
       <span>{item.label}</span>
@@ -107,7 +108,7 @@ export function ToolCallBubble({ item }: ToolCallBubbleProps) {
   );
 
   return (
-    <ExpandableBubble label={label}>
+    <ExpandableBubble label={label} isThinking={isLoading}>
       <div className="overflow-hidden">
         {Object.keys(item.args).length > 0 && (
           <div className="px-3 py-2 border-b border-dashed">
@@ -150,16 +151,16 @@ export function ToolCallBubble({ item }: ToolCallBubbleProps) {
 // ── ReasoningBubble ──────────────────────────────────────────────────────────
 interface ReasoningBubbleProps {
   item: ReasoningItem;
-  isOpen?: boolean;
+  isThinking?: boolean;
 }
 
-export function ReasoningBubble({ item, isOpen }: ReasoningBubbleProps) {
+export function ReasoningBubble({ item, isThinking }: ReasoningBubbleProps) {
   const label = (
-    <span>{isOpen ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>
+    <span>{isThinking ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>
   );
 
   return (
-    <ExpandableBubble label={label} isThinking={isOpen} defaultExpanded={isOpen}>
+    <ExpandableBubble label={label} isThinking={isThinking}>
       <div className="px-3 py-2 text-muted-foreground leading-relaxed whitespace-pre-wrap font-mono max-h-60 overflow-y-auto thin-scrollbar">
         {item.content}
       </div>
@@ -186,15 +187,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }
 
   return (
-    <div className="my-4">
-      <div className="prose prose-sm max-w-none">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
-        >
-          {message.content}
-        </ReactMarkdown>
-      </div>
+    <div className="my-4 prose prose-sm max-w-none">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+      >
+        {message.content}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -203,19 +202,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 interface StreamingBubbleProps {
   content: string;
   reasoning?: string;
-  isWaitingForText?: boolean;
 }
 
 export function StreamingBubble({
   content,
   reasoning,
-  isWaitingForText,
 }: StreamingBubbleProps) {
   const parsed = parseThinking(content);
   const thinkingText = reasoning || parsed.thinking;
-  // After text-start, reasoning is done — don't show it as still-open
   const thinkingOpen = reasoning
-    ? !isWaitingForText && reasoning.length > 0 && !content
+    ? reasoning.length > 0 && !content
     : parsed.thinkingOpen;
   const hasThinking = thinkingText.length > 0 || thinkingOpen;
   const hasText = parsed.text.length > 0;
@@ -228,12 +224,12 @@ export function StreamingBubble({
   };
 
   return (
-    <div className="mb-4">
+    <>
       {hasThinking && (
-        <ReasoningBubble item={fakeReasoningItem} isOpen={thinkingOpen} />
+        <ReasoningBubble item={fakeReasoningItem} isThinking={thinkingOpen} />
       )}
       {hasText ? (
-        <div className="prose prose-sm max-w-none text-gray-800">
+        <div className="my-4 prose prose-sm max-w-none text-gray-800">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
@@ -241,40 +237,24 @@ export function StreamingBubble({
             {parsed.text}
           </ReactMarkdown>
         </div>
-      ) : isWaitingForText ? (
+      ) : !hasThinking ? (
         <div className="flex items-center gap-2 text-xs text-gray-400 py-1">
           <span className="inline-flex gap-0.5">
             <span
-              className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
               style={{ animationDelay: "0ms" }}
             />
             <span
-              className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
               style={{ animationDelay: "150ms" }}
             />
             <span
-              className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce"
+              className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
               style={{ animationDelay: "300ms" }}
             />
           </span>
-          <span>Đang soạn câu trả lời...</span>
-        </div>
-      ) : !hasThinking ? (
-        <div className="flex gap-1 items-center py-1">
-          <span
-            className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"
-            style={{ animationDelay: "0ms" }}
-          />
-          <span
-            className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"
-            style={{ animationDelay: "150ms" }}
-          />
-          <span
-            className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"
-            style={{ animationDelay: "300ms" }}
-          />
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

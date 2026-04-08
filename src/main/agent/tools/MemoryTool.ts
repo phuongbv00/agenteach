@@ -1,6 +1,7 @@
 import { tool, zodSchema } from 'ai';
 import { z } from 'zod';
 import { MemoryStore } from '../../memory/MemoryStore';
+import { BrowserWindow } from 'electron';
 
 const memoryInputSchema = z.object({
   layer: z.enum(['global', 'workspace']).describe('Lớp memory: global (áp dụng toàn bộ) / workspace (áp dụng trong workspace này)'),
@@ -11,7 +12,7 @@ const memoryInputSchema = z.object({
 
 type MemoryInput = z.infer<typeof memoryInputSchema>;
 
-export function createMemoryTool(workspaceId: string) {
+export function createMemoryTool(workspaceId: string, win?: BrowserWindow) {
   return tool({
     description: 'Ghi nhớ thông tin quan trọng vào memory: global (áp dụng toàn bộ) hoặc workspace (áp dụng trong workspace này)',
     inputSchema: zodSchema(memoryInputSchema),
@@ -25,7 +26,11 @@ export function createMemoryTool(workspaceId: string) {
         MemoryStore.updateWorkspace(workspaceId, patch);
       }
 
-      return `Đã ghi nhớ (${layer}/${type}).`;
+      if (win) {
+        win.webContents.send('memory:updated');
+      }
+
+      return `Đã ghi nhớ nội dung vào lớp ${layer}.`;
     },
   });
 }

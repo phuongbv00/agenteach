@@ -33,9 +33,6 @@ contextBridge.exposeInMainWorld('api', {
   onReasoning: (cb: (text: string) => void) => {
     ipcRenderer.on('agent:reasoning', (_e, text) => cb(text));
   },
-  onTextStart: (cb: () => void) => {
-    ipcRenderer.on('agent:textStart', () => cb());
-  },
   onDone: (cb: () => void) => {
     ipcRenderer.on('agent:done', () => cb());
   },
@@ -46,7 +43,6 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeAllListeners('agent:reasoning');
     ipcRenderer.removeAllListeners('agent:done');
     ipcRenderer.removeAllListeners('agent:fileProgress');
-    ipcRenderer.removeAllListeners('agent:textStart');
   },
   onPreviewFile: (cb: (data: { type: string; fileName: string; filePath: string }) => void) => {
     ipcRenderer.on('file:preview', (_e, data) => cb(data));
@@ -98,6 +94,12 @@ contextBridge.exposeInMainWorld('api', {
   getAllMemory: () => ipcRenderer.invoke('memory:getAll'),
   updateGlobalMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:updateGlobal', patch),
   updateWorkspaceMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:updateWorkspace', patch),
+  onMemoryUpdated: (cb: () => void) => {
+    ipcRenderer.on('memory:updated', () => cb());
+  },
+  offMemoryUpdated: () => {
+    ipcRenderer.removeAllListeners('memory:updated');
+  },
   // Backward compat
   getMemory: () => ipcRenderer.invoke('memory:get'),
   updateMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:update', patch),
@@ -125,6 +127,12 @@ contextBridge.exposeInMainWorld('api', {
 
   // Plugins
   listPlugins: () => ipcRenderer.invoke('plugins:list'),
+  savePlugin: (plugin: Record<string, unknown>) =>
+    ipcRenderer.invoke('plugins:save', plugin),
+  deletePlugin: (pluginId: string) =>
+    ipcRenderer.invoke('plugins:delete', pluginId),
+  openPluginsDir: () =>
+    ipcRenderer.invoke('plugins:openDir'),
 
   // Logs
   exportLogs: () => ipcRenderer.invoke('system:exportLogs'),

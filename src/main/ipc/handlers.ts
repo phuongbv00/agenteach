@@ -127,12 +127,16 @@ export function registerHandlers(win: BrowserWindow): void {
     return MemoryStore.loadAll(activeWorkspaceId);
   });
   ipcMain.handle('memory:updateGlobal', (_e, patch: Parameters<typeof MemoryStore.updateGlobal>[0]) => {
-    return MemoryStore.updateGlobal(patch);
+    const res = MemoryStore.updateGlobal(patch);
+    win.webContents.send('memory:updated');
+    return res;
   });
   ipcMain.handle('memory:updateWorkspace', (_e, patch: Parameters<typeof MemoryStore.updateWorkspace>[1]) => {
     const { activeWorkspaceId } = appConfig.get();
     if (!activeWorkspaceId) return;
-    return MemoryStore.updateWorkspace(activeWorkspaceId, patch);
+    const res = MemoryStore.updateWorkspace(activeWorkspaceId, patch);
+    win.webContents.send('memory:updated');
+    return res;
   });
 
   // Backward compat
@@ -144,7 +148,9 @@ export function registerHandlers(win: BrowserWindow): void {
   ipcMain.handle('memory:update', (_e, patch: Parameters<typeof MemoryStore.update>[1]) => {
     const { activeWorkspaceId } = appConfig.get();
     if (!activeWorkspaceId) return;
-    return MemoryStore.update(activeWorkspaceId, patch);
+    const res = MemoryStore.update(activeWorkspaceId, patch);
+    win.webContents.send('memory:updated');
+    return res;
   });
 
   // Artifacts
@@ -174,9 +180,18 @@ export function registerHandlers(win: BrowserWindow): void {
 
   // Plugins
   ipcMain.handle('plugins:list', () => {
-    const { activeWorkspaceId } = appConfig.get();
-    const ws = activeWorkspaceId ? WorkspaceManager.get(activeWorkspaceId) : null;
-    return PluginLoader.load(ws?.path);
+    return PluginLoader.load();
+  });
+  ipcMain.handle('plugins:save', (_e, plugin: Parameters<typeof PluginLoader.save>[0]) => {
+    PluginLoader.save(plugin);
+  });
+  ipcMain.handle('plugins:delete', (_e, pluginId: string) => {
+    PluginLoader.delete(pluginId);
+  });
+  ipcMain.handle('plugins:openDir', () => {
+    const dir = PluginLoader.pluginDir();
+    fs.mkdirSync(dir, { recursive: true });
+    shell.openPath(dir);
   });
 
   // Logs

@@ -17,6 +17,7 @@ export async function requestHitl(
   workspaceId: string,
   win: BrowserWindow
 ): Promise<boolean> {
+  if (action === 'read') return true;
   const status = PermissionManager.check(action, workspaceId);
   if (status === 'granted') return true;
   if (status === 'denied') return false;
@@ -133,8 +134,6 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
       execute: async (input: { file_path: string }) => {
         try {
           const resolved = resolveWorkspacePath(input.file_path);
-          const approved = await requestHitl('read', resolved, workspace.id, win);
-          if (!approved) return 'Người dùng từ chối cho phép đọc file này.';
           const fileName = path.basename(resolved);
           return await readFileContent(resolved, (stage) => {
             win.webContents.send('agent:fileProgress', { fileName, stage });

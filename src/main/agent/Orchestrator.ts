@@ -1,10 +1,11 @@
-import { streamText, stepCountIs } from "ai";
+import { ToolLoopAgent, generateText, isLoopFinished } from "ai";
 import { BrowserWindow } from "electron";
 import { createModel } from "../llm/LLMClient";
 import { appConfig } from "../config/AppConfig";
 import { WorkspaceManager } from "../workspace/WorkspaceManager";
 import { MemoryStore } from "../memory/MemoryStore";
 import { PluginLoader } from "../plugins/PluginLoader";
+import type { Plugin } from "../plugins/PluginLoader";
 import { buildSystemPrompt } from "./SystemPromptBuilder";
 import { createFileTools } from "./tools/FileTools";
 import { createExportTools } from "./tools/ExportTools";
@@ -49,43 +50,38 @@ export async function runAgent(
   }
 
   const memory = MemoryStore.loadAll(workspace.id);
-  const allPlugins = PluginLoader.load(workspace.path);
-  const lastUserMessage =
-    messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
-  const activePlugin = PluginLoader.match(allPlugins, lastUserMessage);
+  const allPlugins = PluginLoader.load();
+  const lastUserMessage = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
+  const activePlugin = await resolvePlugin(allPlugins, lastUserMessage);
   const systemPrompt = buildSystemPrompt(memory, workspace, activePlugin);
 
   const index = getWorkspaceIndex(workspace.id, workspace.path);
   const fileTools = createFileTools(workspace, win, index);
   const exportTools = createExportTools(workspace, win, index, sessionId);
-  const memoryTool = createMemoryTool(workspace.id);
+  const memoryTool = createMemoryTool(workspace.id, win);
 
-  const chunkRun = { type: "", count: 0 };
-  const flushChunkRun = () => {
-    if (!chunkRun.type) return;
-    console.log(`[chunk] ${chunkRun.type}${chunkRun.count > 1 ? ` x${chunkRun.count}` : ""}`);
-    chunkRun.type = "";
-    chunkRun.count = 0;
-  };
+
+  const agent = new ToolLoopAgent({
+    model: createModel(model ?? config.selectedModel),
+    instructions: systemPrompt,
+    tools: {
+      list_directory: fileTools.list_directory,
+      find_files: fileTools.find_files,
+      read_file: fileTools.read_file,
+      write_file: fileTools.write_file,
+      search_in_files: fileTools.search_in_files,
+      create_markdown: exportTools.create_markdown,
+      create_pdf: exportTools.create_pdf,
+      create_docx: exportTools.create_docx,
+      get_date: date_tool,
+      update_memory: memoryTool,
+    },
+    stopWhen: isLoopFinished(),
+  });
 
   try {
-    const result = streamText({
-      model: createModel(model ?? config.selectedModel),
-      system: systemPrompt,
+    const result = await agent.stream({
       messages,
-      tools: {
-        list_directory: fileTools.list_directory,
-        find_files: fileTools.find_files,
-        read_file: fileTools.read_file,
-        write_file: fileTools.write_file,
-        search_in_files: fileTools.search_in_files,
-        create_markdown: exportTools.create_markdown,
-        create_pdf: exportTools.create_pdf,
-        create_docx: exportTools.create_docx,
-        get_date: date_tool,
-        update_memory: memoryTool,
-      },
-      stopWhen: stepCountIs(50),
       abortSignal: signal,
     });
 
@@ -94,15 +90,15 @@ export async function runAgent(
       { toolName: string; label: string; args: Record<string, unknown> }
     >();
 
+    let prevChunkType:string|null = null;
     const logChunk = (c: Record<string, unknown>) => {
       const type = c.type as string;
-      if (type === chunkRun.type) {
-        chunkRun.count++;
-      } else {
-        flushChunkRun();
-        chunkRun.type = type;
-        chunkRun.count = 1;
-      }
+      if (type === prevChunkType) return;
+      if (['text-delta', 'reasoning-delta'].includes(type))
+        console.log(`[chunk] ${type} ...`);
+      else
+        console.log(`[chunk] ${type}`, c);
+      prevChunkType = type;
     };
 
     for await (const chunk of result.fullStream) {
@@ -180,12 +176,7 @@ export async function runAgent(
         case "finish":
         case "reasoning-start":
         case "reasoning-end":
-          break;
-        // ── Text start → notify UI that text generation is beginning ──────────
-        case "text-start": {
-          win.webContents.send("agent:textStart");
-          break;
-        }
+        case "text-start":
         case "text-end":
         case "tool-input-delta":
         case "tool-input-end":
@@ -201,7 +192,6 @@ export async function runAgent(
       win.webContents.send("agent:token", `\n\nLỗi: ${String(err)}`);
     }
   } finally {
-    flushChunkRun();
     win.webContents.send("agent:done");
     currentAbortController = null;
   }
@@ -209,6 +199,37 @@ export async function runAgent(
 
 export function cancelAgent(): void {
   currentAbortController?.abort();
+}
+
+async function resolvePlugin(plugins: Plugin[], userMessage: string): Promise<Plugin | null> {
+  if (plugins.length === 0) return null;
+
+  const pluginList = plugins
+    .filter(p => p.type === 'skill') // For now only resolve skills as "active plugins"
+    .map((p) => `id=${p.id} | name=${p.name} | description=${p.description}`)
+    .join("\n");
+
+  if (!pluginList) return null;
+
+  const { text } = await generateText({
+    model: createModel(appConfig.get().selectedModel),
+    prompt: `Chọn plugin phù hợp nhất với yêu cầu của user, hoặc null nếu không có plugin nào phù hợp.
+
+Plugins:
+${pluginList}
+
+Yêu cầu: ${userMessage}
+
+Trả về JSON duy nhất, không giải thích: {"plugin_id": "<id hoặc null>"}`,
+  });
+
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    const pluginId = match ? (JSON.parse(match[0]).plugin_id ?? null) : null;
+    return plugins.find((p) => p.id === pluginId) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function toolLabel(toolName: string, args: Record<string, unknown>): string {

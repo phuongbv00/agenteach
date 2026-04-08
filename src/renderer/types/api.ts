@@ -39,10 +39,16 @@ export interface AllMemory {
 }
 
 export interface Plugin {
+  id: string;
+  type: 'skill' | 'mcp';
   name: string;
   description: string;
+  // skill-specific
   triggers: string[];
   prompt: string;
+  // mcp-specific
+  command?: string;
+  args?: string[];
 }
 
 export interface AIProvider {
@@ -112,7 +118,6 @@ declare global {
       onToolCall(cb: (event: ToolCallEvent) => void): void;
       onToolCallStart(cb: (event: Omit<ToolCallEvent, 'result'>) => void): void;
       onReasoning(cb: (text: string) => void): void;
-      onTextStart(cb: () => void): void;
       onDone(cb: () => void): void;
       onFileProgress(cb: (info: { fileName: string; stage: 'reading' | 'parsing' }) => void): void;
       offAgentEvents(): void;
@@ -140,6 +145,8 @@ declare global {
       getAllMemory(): Promise<AllMemory | null>;
       updateGlobalMemory(patch: Partial<MemoryLayer>): Promise<MemoryLayer>;
       updateWorkspaceMemory(patch: Partial<MemoryLayer>): Promise<MemoryLayer>;
+      onMemoryUpdated(cb: () => void): void;
+      offMemoryUpdated(): void;
       getMemory(): Promise<Memory | null>;
       updateMemory(patch: Partial<Memory>): Promise<Memory>;
 
@@ -157,6 +164,9 @@ declare global {
       openFile(filePath: string): Promise<void>;
 
       listPlugins(): Promise<Plugin[]>;
+      savePlugin(plugin: Plugin): Promise<void>;
+      deletePlugin(pluginId: string): Promise<void>;
+      openPluginsDir(): Promise<void>;
       exportLogs(): Promise<boolean>;
     };
   }

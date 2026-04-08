@@ -18,7 +18,9 @@
       "Bash(grep -rn \"interface Tool\\\\b\" node_modules/@ai-sdk/ui-utils/dist/*.d.ts node_modules/@ai-sdk/provider-utils/dist/*.d.ts)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx vite build --config vite.renderer.config.ts)",
       "Bash(npm info:*)",
-      "Read(//Users/phuongbv/.agenteach/sessions/a9348906-3fba-49a2-94c1-2e0deaf26e14/**)"
+      "Read(//Users/phuongbv/.agenteach/sessions/a9348906-3fba-49a2-94c1-2e0deaf26e14/**)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)"
     ]
   }
 }

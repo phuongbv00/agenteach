@@ -48,7 +48,6 @@ interface ChatState {
   reasoningContent: string;
   pendingItems: ChatItem[];
   pendingToolCall: PendingToolCall | null;
-  isWaitingForText: boolean;
 
   // For LLM: only user/assistant text (no tool_calls, no thinking markup)
   toMessages(): ChatMessage[];
@@ -58,7 +57,6 @@ interface ChatState {
   addUserMessage(content: string): void;
   appendToken(token: string): void;
   appendReasoning(text: string): void;
-  setWaitingForText(): void;
   addToolCallStart(event: PendingToolCall): void;
   addToolCall(event: Omit<ToolCallItem, 'type' | 'id'>): void;
   finalizeAssistantMessage(): void;
@@ -91,7 +89,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   reasoningContent: '',
   pendingItems: [],
   pendingToolCall: null,
-  isWaitingForText: false,
 
   toMessages(): ChatMessage[] {
     return get().items
@@ -119,27 +116,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       streamingContent: '',
       reasoningContent: '',
       pendingItems: [],
-      isWaitingForText: false,
     })),
 
   appendToken: (token) =>
-    set((s) => ({ streamingContent: s.streamingContent + token, isWaitingForText: false })),
+    set((s) => s.isStreaming ? { streamingContent: s.streamingContent + token } : s),
 
   appendReasoning: (text) =>
-    set((s) => ({ reasoningContent: s.reasoningContent + text })),
-
-  setWaitingForText: () => set({ isWaitingForText: true }),
+    set((s) => s.isStreaming ? { reasoningContent: s.reasoningContent + text } : s),
 
   addToolCallStart: (event) => {
     set((s) => {
+      if (!s.isStreaming) return s;
       const newPending: ChatItem[] = [...s.pendingItems, ...snapshotItems(s.streamingContent, s.reasoningContent)];
-      return { pendingItems: newPending, streamingContent: '', reasoningContent: '', pendingToolCall: event, isWaitingForText: false };
+      return { pendingItems: newPending, streamingContent: '', reasoningContent: '', pendingToolCall: event };
     });
   },
 
   addToolCall: (event) => {
     const toolItem: ToolCallItem = { type: 'tool_call', id: `tc-${++_toolCallCounter}`, ...event };
     set((s) => {
+      if (!s.isStreaming) return s;
       const newPending: ChatItem[] = [...s.pendingItems, ...snapshotItems(s.streamingContent, s.reasoningContent), toolItem];
       return { pendingItems: newPending, streamingContent: '', reasoningContent: '', pendingToolCall: null };
     });
@@ -148,7 +144,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   finalizeAssistantMessage: () => {
     const { streamingContent, reasoningContent, items, pendingItems } = get();
     const newItems: ChatItem[] = [...items, ...pendingItems, ...snapshotItems(streamingContent, reasoningContent)];
-    set({ items: newItems, isStreaming: false, streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null, isWaitingForText: false });
+    set({ items: newItems, isStreaming: false, streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null });
   },
 
   setStreaming: (v) => set({ isStreaming: v }),
@@ -169,5 +165,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ items: chatItems, streamingContent: '', reasoningContent: '', pendingItems: [], isStreaming: false });
   },
 
-  clear: () => set({ items: [], streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null, isStreaming: false, isWaitingForText: false }),
+  clear: () => set({ items: [], streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null, isStreaming: false }),
 }));
