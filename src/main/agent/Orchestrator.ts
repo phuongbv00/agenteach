@@ -76,6 +76,7 @@ export async function runAgent(
       get_date: date_tool,
       update_memory: memoryTool,
     },
+    toolChoice: 'required',
     stopWhen: isLoopFinished(),
   });
 

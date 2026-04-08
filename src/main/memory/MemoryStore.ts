@@ -10,12 +10,10 @@ export const MemoryStore = {
   load(): string {
     try {
       const mdPath = this.mdPath();
-      if (!fs.existsSync(mdPath)) {
-        return "";
-      }
+      if (!fs.existsSync(mdPath)) return '';
       return fs.readFileSync(mdPath, 'utf-8');
     } catch {
-      return "";
+      return '';
     }
   },
 
@@ -24,16 +22,4 @@ export const MemoryStore = {
     fs.mkdirSync(path.dirname(mdPath), { recursive: true });
     fs.writeFileSync(mdPath, content, 'utf-8');
   },
-
-  update(content: string): string {
-    this.save(content);
-    return content;
-  },
-
-  append(content: string): string {
-    const current = this.load();
-    const updated = current ? `${current}\n\n${content}` : content;
-    this.save(updated);
-    return updated;
-  }
 };

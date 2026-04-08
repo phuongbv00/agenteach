@@ -4,28 +4,23 @@ import { MemoryStore } from '../../memory/MemoryStore';
 import { BrowserWindow } from 'electron';
 
 const memoryInputSchema = z.object({
-  action: z.enum(['append', 'replace']).describe('Gắn thêm (append) hoặc ghi đè toàn bộ (replace) memory'),
-  content: z.string().describe('Nội dung markdown cần lưu cho bộ nhớ'),
+  content: z.string().describe('Toàn bộ nội dung memory mới (Markdown đầy đủ, ghi đè bản cũ)'),
 });
 
 type MemoryInput = z.infer<typeof memoryInputSchema>;
 
 export function createMemoryTool(win?: BrowserWindow) {
   return tool({
-    description: 'Cập nhật bộ nhớ chung. Chỉ gồm markdown',
+    description: 'Ghi đè toàn bộ memory. Trước khi gọi, PHẢI đọc memory hiện tại từ system prompt [MEMORY], giữ lại mọi thông tin cũ, rồi ghi lại bản đầy đủ đã cập nhật.',
     inputSchema: zodSchema(memoryInputSchema),
     execute: async (input: MemoryInput) => {
-      if (input.action === 'append') {
-        MemoryStore.append(input.content);
-      } else {
-        MemoryStore.update(input.content);
-      }
+      MemoryStore.save(input.content);
 
       if (win) {
         win.webContents.send('memory:updated');
       }
 
-      return `Đã cập nhật bộ nhớ.`;
+      return 'Đã cập nhật bộ nhớ.';
     },
   });
 }

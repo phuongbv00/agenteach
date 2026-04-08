@@ -9,14 +9,14 @@ Ví dụ tín hiệu cần update_memory:
 - "viết lại nhưng...", "lần sau hãy...", "tôi luôn làm...", "đừng dùng...", "thay vì...", "hãy luôn...", "tôi thích...", "tôi không thích..."
 - Cách xưng hô, ngôn ngữ, cấu trúc yêu thích, mức độ dài ngắn, chuyên sâu hay dễ hiểu.
 
-LƯU Ý ĐỊNH DẠNG MEMORY (Markdown):
-Trong memory có các phần:
-- `## PROFILE`: Thông tin cơ bản về người dùng.
-- `## PREFERENCES`: Sở thích, thói quen, phong cách làm việc của người dùng.
-- `## BRIEF HISTORY`: Tóm tắt các hoạt động, dự án hoặc yêu cầu quan trọng gần đây để duy trì mạch làm việc.
+QUY TRÌNH GỌI update_memory (BẮT BUỘC):
+1. Đọc nội dung memory hiện tại từ phần [MEMORY] trong system prompt.
+2. Tự merge thông tin mới vào — giữ nguyên mọi thông tin cũ, chỉ thêm/sửa phần liên quan.
+3. Gọi update_memory với bản Markdown đầy đủ, hoàn chỉnh (không được bỏ sót thông tin cũ).
 
-Khi bạn update:
-- Cập nhật PROFILE nếu thông tin cá nhân thay đổi.
-- Append vào PREFERENCES nếu phát hiện sở thích/nguyên tắc mới.
-- Cập nhật BRIEF HISTORY định kỳ để tóm tắt ngắn gọn các cột mốc làm việc gần đây.
-Luôn đảm bảo định dạng Markdown rõ ràng.
+ĐỊNH DẠNG MEMORY (Markdown):
+- `## PROFILE`: Thông tin cơ bản về người dùng.
+- `## PREFERENCES`: Sở thích, thói quen, phong cách làm việc.
+- `## BRIEF HISTORY`: Tóm tắt các hoạt động, dự án hoặc yêu cầu quan trọng gần đây.
+
+Luôn đảm bảo định dạng Markdown rõ ràng, đầy đủ cả ba phần.

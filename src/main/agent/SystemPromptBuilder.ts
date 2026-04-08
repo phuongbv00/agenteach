@@ -5,6 +5,7 @@ import type { Plugin } from "../plugins/PluginLoader";
 
 import identityTpl from "./prompts/identity.md?raw";
 import workspaceTpl from "./prompts/workspace.md?raw";
+import toolsTpl from "./prompts/tools.md?raw";
 import memoryUpdateTpl from "./prompts/memory-update.md?raw";
 import actionPrinciplesTpl from "./prompts/action-principles.md?raw";
 
@@ -55,6 +56,7 @@ export function buildSystemPrompt(
     parts.push(`[ACTIVE SKILL: ${activePlugin.name}]\n${activePlugin.prompt}`);
   }
 
+  parts.push(toolsTpl);
   parts.push(memoryUpdateTpl);
   parts.push(actionPrinciplesTpl);
 

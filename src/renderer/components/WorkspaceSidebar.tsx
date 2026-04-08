@@ -296,7 +296,7 @@ export default function WorkspaceSidebar({
 
         <div className="flex-1 overflow-y-auto px-2 space-y-0.5 pb-2">
           {!activeWorkspace && (
-            <p className="text-xs text-muted-foreground px-2">Chọn workspace để xem phiên làm việc</p>
+            <p className="text-xs text-muted-foreground px-2">Vui lòng chọn workspace</p>
           )}
           {sessions.map((session) => (
             <div

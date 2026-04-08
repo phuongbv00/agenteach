@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Folder, X } from "lucide-react";
 import type { AIProvider } from "../types/api";
 import iconUrl from "../assets/icon.jpeg";
@@ -155,8 +155,8 @@ export default function SetupWizard({ onComplete }: Props) {
         {/* Progress */}
         <div className="flex items-center mb-8">
           {STEPS.map((s, i) => (
-            <>
-              <div key={s} className="flex flex-col justify-center items-center flex-1">
+            <Fragment key={i}>
+              <div className="flex flex-col justify-center items-center flex-1">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${i < currentIdx
                       ? "bg-primary text-primary-foreground"
@@ -172,9 +172,9 @@ export default function SetupWizard({ onComplete }: Props) {
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div key={i} className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
+                <div className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
               )}
-            </>
+            </Fragment>
           ))}
         </div>
 

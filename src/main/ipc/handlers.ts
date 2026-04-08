@@ -118,9 +118,9 @@ export function registerHandlers(win: BrowserWindow): void {
     return MemoryStore.load();
   });
   ipcMain.handle('memory:update', (_e, content: string) => {
-    const res = MemoryStore.update(content);
+    MemoryStore.save(content);
     win.webContents.send('memory:updated');
-    return res;
+    return content;
   });
 
   // Artifacts
