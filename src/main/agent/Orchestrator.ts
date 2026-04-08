@@ -49,7 +49,7 @@ export async function runAgent(
     return;
   }
 
-  const memory = MemoryStore.loadAll(workspace.id);
+  const memory = MemoryStore.load();
   const allPlugins = PluginLoader.load();
   const lastUserMessage = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
   const activePlugin = await resolvePlugin(allPlugins, lastUserMessage);
@@ -58,7 +58,7 @@ export async function runAgent(
   const index = getWorkspaceIndex(workspace.id, workspace.path);
   const fileTools = createFileTools(workspace, win, index);
   const exportTools = createExportTools(workspace, win, index, sessionId);
-  const memoryTool = createMemoryTool(workspace.id, win);
+  const memoryTool = createMemoryTool(win);
 
 
   const agent = new ToolLoopAgent({

@@ -1,9 +1,12 @@
 import path from 'node:path';
+import os from 'node:os';
 import fs from 'node:fs';
 import log from 'electron-log/main';
 
-// File: ~/Library/Logs/<appName>/main.log (macOS)
-//       %APPDATA%\<appName>\logs\main.log  (Windows)
+// Logs are stored in ~/.agenteach/logs/
+const logDir = path.join(os.homedir(), '.agenteach', 'logs');
+fs.mkdirSync(logDir, { recursive: true });
+log.transports.file.resolvePathFn = () => path.join(logDir, 'main.log');
 log.transports.file.level = 'debug';
 log.transports.file.maxSize = 10 * 1024 * 1024; // 10 MB per file
 log.transports.console.level = 'debug';

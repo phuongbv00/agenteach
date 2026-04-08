@@ -10,12 +10,11 @@ interface Props {
   onComplete: () => void;
 }
 
-const STEPS = ["ai-provider", "ai-model", "profile", "workspace"] as const;
+const STEPS = ["ai-provider", "profile", "workspace"] as const;
 type Step = (typeof STEPS)[number];
 
 const STEP_LABELS: Record<Step, string> = {
-  "ai-provider": "Kết nối",
-  "ai-model": "Mô hình",
+  "ai-provider": "Kết nối AI",
   profile: "Hồ sơ",
   workspace: "Workspace",
 };
@@ -102,7 +101,6 @@ export default function SetupWizard({ onComplete }: Props) {
       const list = await window.api.listProviderModels(provider);
       setModels(list);
       if (list.length > 0) setSelectedModel(list[0]);
-      setStep("ai-model");
     }
   };
 
@@ -118,9 +116,9 @@ export default function SetupWizard({ onComplete }: Props) {
       subject: subject.trim(),
       setupComplete: false,
     });
-    await window.api.updateGlobalMemory({
-      user: { name: teacherName.trim(), subject: subject.trim(), grades: [] },
-    });
+    await window.api.updateMemory(
+      `## PROFILE\n- Tên: ${teacherName.trim()}\n- Môn dạy: ${subject.trim()}\n\n## PREFERENCES\n\n## BRIEF HISTORY\n`
+    );
     setStep("workspace");
   };
 
@@ -147,7 +145,7 @@ export default function SetupWizard({ onComplete }: Props) {
 
   return (
     <div className="flex items-center justify-center h-full bg-muted/30">
-      <div className="bg-card text-card-foreground rounded-2xl shadow-lg p-8 w-full max-w-md">
+      <div className="bg-card text-card-foreground shadow-lg p-8 w-full max-w-lg max-h-[90dvh] rounded-2xl flex flex-col">
         {/* Header */}
         <div className="text-center mb-6">
           <img src={iconUrl} alt="Agenteach" className="w-24 h-24 mx-auto mb-2 rounded-xl" />
@@ -157,16 +155,15 @@ export default function SetupWizard({ onComplete }: Props) {
         {/* Progress */}
         <div className="flex items-center mb-8">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center">
+            <>
+              <div key={s} className="flex flex-col justify-center items-center flex-1">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
-                    i < currentIdx
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${i < currentIdx
                       ? "bg-primary text-primary-foreground"
                       : i === currentIdx
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground/60"
-                  }`}
+                    }`}
                 >
                   {i < currentIdx ? <Check size={14} /> : i + 1}
                 </div>
@@ -175,280 +172,271 @@ export default function SetupWizard({ onComplete }: Props) {
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
+                <div key={i} className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
               )}
-            </div>
+            </>
           ))}
         </div>
 
-        {/* ── Step 1: Kết nối ── */}
-        {step === "ai-provider" && (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-base font-semibold text-foreground mb-1">Chọn nguồn AI</h2>
-              <p className="text-sm text-muted-foreground">
-                Agenteach kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không rời khỏi mạng của bạn.
-              </p>
-            </div>
+        <div className="flex-1 overflow-y-auto min-h-0 pr-2 -mr-2">
+          {/* ── Step 1: Kết nối AI ── */}
+          {step === "ai-provider" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">Kết nối AI</h2>
+                <p className="text-sm text-muted-foreground">
+                  Kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không rời khỏi mạng của bạn.
+                </p>
+              </div>
 
-            <div className="space-y-2">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => { setSelectedPresetId(p.id); setConnectionOk(null); setCustomUrl(""); }}
-                  className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${
-                    selectedPresetId === p.id
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/30 border-border"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                      selectedPresetId === p.id ? "border-primary" : "border-border"
-                    }`}
-                  >
-                    {selectedPresetId === p.id && <div className="w-2 h-2 rounded-full bg-primary" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{p.label}</p>
-                    <p className="text-xs text-muted-foreground/60">{p.sublabel}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {selectedPresetId !== "ollama-local" && (
               <div className="space-y-2">
-                <Input
-                  autoFocus
-                  value={customUrl}
-                  onChange={(e) => { setCustomUrl(e.target.value); setConnectionOk(null); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleConnect()}
-                  placeholder={
-                    "Địa chỉ (" +
-                    (selectedPresetId === "ollama-remote"
-                      ? "http://192.168.1.10:11434/v1"
-                      : activePreset.baseUrl || "https://api.example.com/v1") +
-                    ")"
-                  }
-                  className="font-mono"
-                />
-                <Input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="API Key"
-                  required={activePreset.needsKey}
-                  className="font-mono"
-                />
+                {PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setSelectedPresetId(p.id); setConnectionOk(null); setCustomUrl(""); }}
+                    className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${selectedPresetId === p.id
+                        ? "border-primary bg-primary/5"
+                        : "hover:bg-muted/30 border-border"
+                      }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedPresetId === p.id ? "border-primary" : "border-border"
+                        }`}
+                    >
+                      {selectedPresetId === p.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{p.label}</p>
+                      <p className="text-xs text-muted-foreground/60">{p.sublabel}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
 
-            {connectionOk === true && (
-              <div className="bg-primary/5 border border-primary/20 text-primary rounded-xl p-3 text-sm flex items-center gap-2">
-                <CheckCircle2 size={16} /> <span>Kết nối thành công!</span>
-              </div>
-            )}
-            {connectionOk === false && (
-              <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
-                <p className="font-medium">Không kết nối được. Kiểm tra:</p>
-                <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                  {(selectedPresetId === "ollama-local" || selectedPresetId === "ollama-remote") && (
-                    <li>Ollama đã bật chưa? (chạy <code>ollama serve</code>)</li>
-                  )}
-                  {selectedPresetId !== PRESETS[0].id && <li>Địa chỉ URL có đúng không?</li>}
-                  {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
-                  <li>Nhờ bộ phận IT hỗ trợ nếu cần</li>
-                </ul>
-              </div>
-            )}
+              {selectedPresetId !== "ollama-local" && (
+                <div className="space-y-2">
+                  <Input
+                    autoFocus
+                    value={customUrl}
+                    onChange={(e) => { setCustomUrl(e.target.value); setConnectionOk(null); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleConnect()}
+                    placeholder={
+                      "Địa chỉ (" +
+                      (selectedPresetId === "ollama-remote"
+                        ? "http://192.168.1.10:11434/v1"
+                        : activePreset.baseUrl || "https://api.example.com/v1") +
+                      ")"
+                    }
+                    className="font-mono"
+                  />
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="API Key"
+                    required={activePreset.needsKey}
+                    className="font-mono"
+                  />
+                </div>
+              )}
 
-            <Button
-              className="w-full rounded-xl"
-              onClick={handleConnect}
-              disabled={checking || (selectedPresetId !== PRESETS[0].id && !customUrl.trim())}
-            >
-              {checking ? "Đang kiểm tra..." : "Kết nối"}
-            </Button>
-          </div>
-        )}
-
-        {/* ── Step 2: Chọn AI model ── */}
-        {step === "ai-model" && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-base font-semibold text-foreground mb-1">Chọn model AI</h2>
-              <p className="text-sm text-muted-foreground">
-                Mỗi model có tốc độ và chất lượng khác nhau. Nếu không chắc, chọn cái đầu tiên.
-              </p>
-            </div>
-
-            <div className="space-y-2 max-h-52 overflow-y-auto">
-              {models.length === 0 ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-2">
-                  <p className="font-medium">Chưa có model nào được cài đặt.</p>
+              {connectionOk === false && (
+                <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
+                  <p className="font-medium">Không kết nối được. Kiểm tra:</p>
                   <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                    <li>Liên hệ bộ phận IT để được cài model phù hợp</li>
-                    <li>
-                      Hoặc tự tải model qua terminal:{" "}
-                      <code className="bg-orange-100 px-1 rounded font-mono">ollama pull &lt;tên-model&gt;</code>
-                    </li>
+                    {(selectedPresetId === "ollama-local" || selectedPresetId === "ollama-remote") && (
+                      <li>Ollama đã bật chưa? (chạy <code>ollama serve</code>)</li>
+                    )}
+                    {selectedPresetId !== PRESETS[0].id && <li>Địa chỉ URL có đúng không?</li>}
+                    {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
+                    <li>Nhờ bộ phận IT hỗ trợ nếu cần</li>
                   </ul>
                 </div>
-              ) : (
-                models.map((m) => (
-                  <label
-                    key={m}
-                    className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                      selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/30"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="model"
-                      value={m}
-                      checked={selectedModel === m}
-                      onChange={() => setSelectedModel(m)}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm font-mono text-foreground">{m}</span>
-                  </label>
-                ))
               )}
-            </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl" onClick={goBack}>
-                <ArrowLeft size={14} /> Quay lại
-              </Button>
-              <Button
-                className="flex-1 rounded-xl"
-                onClick={handleModelNext}
-                disabled={!selectedModel}
-              >
-                Tiếp tục
-              </Button>
-            </div>
-          </div>
-        )}
+              {connectionOk !== true && (
+                <Button
+                  className="w-full rounded-xl"
+                  onClick={handleConnect}
+                  disabled={checking || (selectedPresetId !== PRESETS[0].id && !customUrl.trim())}
+                >
+                  {checking ? "Đang kiểm tra..." : "Kết nối"}
+                </Button>
+              )}
 
-        {/* ── Step 3: Giới thiệu ── */}
-        {step === "profile" && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-base font-semibold text-foreground mb-1">Cho trợ lý biết về bạn</h2>
-              <p className="text-sm text-muted-foreground">
-                Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời. Có thể thay đổi sau.
-              </p>
-            </div>
+              {connectionOk === true && (
+                <div className="space-y-4">
+                  <div className="bg-primary/5 border border-primary/20 text-primary p-3 text-sm flex items-center">
+                    <CheckCircle2 size={16} />
+                    <span className="ml-3">Kết nối thành công!</span>
+                  </div>
 
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Tên của bạn <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  placeholder="VD: Nguyễn Thị Lan"
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-foreground mb-1.5 block">Môn dạy</Label>
-                <Input
-                  placeholder="VD: Toán, Ngữ văn, Lịch sử..."
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground/60 mt-1">Không bắt buộc — có thể điền sau</p>
-              </div>
-            </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground mb-2">Chọn model AI</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {models.length === 0 ? (
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-2">
+                          <p className="font-medium">Chưa có model nào được cài đặt.</p>
+                          <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
+                            <li>Liên hệ bộ phận IT để được cài model phù hợp</li>
+                            <li>
+                              Hoặc tự tải qua terminal:{" "}
+                              <code className="bg-orange-100 px-1 rounded font-mono">ollama pull &lt;model&gt;</code>
+                            </li>
+                          </ul>
+                        </div>
+                      ) : (
+                        models.map((m) => (
+                          <label
+                            key={m}
+                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/30"
+                              }`}
+                          >
+                            <input
+                              type="radio"
+                              name="model"
+                              value={m}
+                              checked={selectedModel === m}
+                              onChange={() => setSelectedModel(m)}
+                              className="accent-primary"
+                            />
+                            <span className="text-sm font-mono text-foreground">{m}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl" onClick={goBack}>
-                <ArrowLeft size={14} /> Quay lại
-              </Button>
-              <Button
-                className="flex-1 rounded-xl"
-                onClick={handleFinish}
-                disabled={!teacherName.trim()}
-              >
-                Tiếp tục <ArrowRight size={14} />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 4: Workspace ── */}
-        {step === "workspace" && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="text-base font-semibold text-foreground mb-1">Chọn thư mục làm việc</h2>
-              <p className="text-sm text-muted-foreground">
-                Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý sẽ tìm và đọc file trong thư mục này.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-medium text-foreground mb-1.5 block">Tên workspace</Label>
-                <Input
-                  autoFocus
-                  placeholder="VD: Tài liệu Toán 10"
-                  value={wsName}
-                  onChange={(e) => setWsName(e.target.value)}
-                />
-              </div>
-
-              {wsPath ? (
-                <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
-                  <Folder size={14} className="text-primary flex-shrink-0" />
-                  <span className="text-sm text-primary font-mono truncate flex-1">{wsPath}</span>
                   <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setWsPath("")}
-                    className="text-muted-foreground/60 hover:text-destructive"
+                    className="w-full rounded-xl"
+                    onClick={handleModelNext}
+                    disabled={!selectedModel}
                   >
-                    <X size={12} />
+                    Tiếp tục <ArrowRight size={14} className="ml-1" />
                   </Button>
                 </div>
-              ) : (
-                <button
-                  onClick={handlePickFolder}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 rounded-xl text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <Folder size={14} /> Chọn thư mục...
-                </button>
               )}
             </div>
+          )}
 
-            <div className="flex gap-2">
-              <Button variant="outline" className="rounded-xl" onClick={goBack}>
-                <ArrowLeft size={14} /> Quay lại
-              </Button>
-              <Button
-                className="flex-1 rounded-xl bg-primary hover:bg-primary/80"
-                onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
-                disabled={wsCreating}
-              >
-                {wsCreating
-                  ? "Đang tạo..."
-                  : wsPath
-                    ? <span className="flex items-center justify-center gap-1">Bắt đầu sử dụng <Check size={14} /></span>
-                    : "Chọn thư mục..."}
-              </Button>
+          {/* ── Step 3: Giới thiệu ── */}
+          {step === "profile" && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">Cho trợ lý biết về bạn</h2>
+                <p className="text-sm text-muted-foreground">
+                  Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời. Có thể thay đổi sau.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                    Tên của bạn <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="VD: Nguyễn Thị Lan"
+                    value={teacherName}
+                    onChange={(e) => setTeacherName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-foreground mb-1.5 block">Môn dạy</Label>
+                  <Input
+                    placeholder="VD: Toán, Ngữ văn, Lịch sử..."
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground/60 mt-1">Không bắt buộc — có thể điền sau</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                  <ArrowLeft size={14} /> Quay lại
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl"
+                  onClick={handleFinish}
+                  disabled={!teacherName.trim()}
+                >
+                  Tiếp tục <ArrowRight size={14} />
+                </Button>
+              </div>
             </div>
+          )}
 
-            <button
-              onClick={handleSkipWorkspace}
-              className="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground text-center"
-            >
-              Bỏ qua, tạo workspace sau
-            </button>
-          </div>
-        )}
+          {/* ── Step 4: Workspace ── */}
+          {step === "workspace" && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">Chọn thư mục làm việc</h2>
+                <p className="text-sm text-muted-foreground">
+                  Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý sẽ tìm và đọc file trong thư mục này.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium text-foreground mb-1.5 block">Tên workspace</Label>
+                  <Input
+                    autoFocus
+                    placeholder="VD: Tài liệu Toán 10"
+                    value={wsName}
+                    onChange={(e) => setWsName(e.target.value)}
+                  />
+                </div>
+
+                {wsPath ? (
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                    <Folder size={14} className="text-primary flex-shrink-0" />
+                    <span className="text-sm text-primary font-mono truncate flex-1">{wsPath}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setWsPath("")}
+                      className="text-muted-foreground/60 hover:text-destructive"
+                    >
+                      <X size={12} />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handlePickFolder}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 rounded-xl text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Folder size={14} /> Chọn thư mục...
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                  <ArrowLeft size={14} /> Quay lại
+                </Button>
+                <Button
+                  className="flex-1 rounded-xl bg-primary hover:bg-primary/80"
+                  onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
+                  disabled={wsCreating}
+                >
+                  {wsCreating
+                    ? "Đang tạo..."
+                    : wsPath
+                      ? <span className="flex items-center justify-center gap-1">Bắt đầu sử dụng <Check size={14} /></span>
+                      : "Chọn thư mục..."}
+                </Button>
+              </div>
+
+              <button
+                onClick={handleSkipWorkspace}
+                className="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground text-center"
+              >
+                Bỏ qua, tạo workspace sau
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

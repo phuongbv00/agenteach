@@ -22,22 +22,6 @@ export interface Session {
   updatedAt: number;
 }
 
-export interface MemoryLayer {
-  user: { name: string; subject: string; grades: string[] };
-  style: Record<string, string>;
-  feedback: string[];
-  context: string[];
-  updatedAt: number;
-}
-
-// backward compat
-export type Memory = MemoryLayer;
-
-export interface AllMemory {
-  global: MemoryLayer;
-  workspace: MemoryLayer;
-}
-
 export interface Plugin {
   id: string;
   type: 'skill' | 'mcp';
@@ -142,13 +126,10 @@ declare global {
       loadSessionMessages(workspaceId: string, sessionId: string): Promise<StoredChatItem[]>;
       saveSessionMessages(workspaceId: string, sessionId: string, items: StoredChatItem[]): Promise<void>;
 
-      getAllMemory(): Promise<AllMemory | null>;
-      updateGlobalMemory(patch: Partial<MemoryLayer>): Promise<MemoryLayer>;
-      updateWorkspaceMemory(patch: Partial<MemoryLayer>): Promise<MemoryLayer>;
-      onMemoryUpdated(cb: () => void): void;
-      offMemoryUpdated(): void;
-      getMemory(): Promise<Memory | null>;
-      updateMemory(patch: Partial<Memory>): Promise<Memory>;
+      getMemory: () => Promise<string>;
+      updateMemory: (content: string) => Promise<string>;
+      onMemoryUpdated: (cb: () => void) => void;
+      offMemoryUpdated: () => void;
 
       checkProvider(provider: AIProvider): Promise<boolean>;
       listProviderModels(provider: AIProvider): Promise<string[]>;

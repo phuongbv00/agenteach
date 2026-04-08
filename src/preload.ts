@@ -90,19 +90,15 @@ contextBridge.exposeInMainWorld('api', {
   saveSessionMessages: (workspaceId: string, sessionId: string, messages: unknown[]) =>
     ipcRenderer.invoke('session:saveMessages', workspaceId, sessionId, messages),
 
-  // Memory (2-layer)
-  getAllMemory: () => ipcRenderer.invoke('memory:getAll'),
-  updateGlobalMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:updateGlobal', patch),
-  updateWorkspaceMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:updateWorkspace', patch),
+  // Memory
+  getMemory: () => ipcRenderer.invoke('memory:get'),
+  updateMemory: (content: string) => ipcRenderer.invoke('memory:update', content),
   onMemoryUpdated: (cb: () => void) => {
     ipcRenderer.on('memory:updated', () => cb());
   },
   offMemoryUpdated: () => {
     ipcRenderer.removeAllListeners('memory:updated');
   },
-  // Backward compat
-  getMemory: () => ipcRenderer.invoke('memory:get'),
-  updateMemory: (patch: Record<string, unknown>) => ipcRenderer.invoke('memory:update', patch),
 
   // Provider management
   checkProvider: (provider: Record<string, unknown>) => ipcRenderer.invoke('provider:check', provider),

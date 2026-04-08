@@ -78,13 +78,6 @@ export function registerHandlers(win: BrowserWindow): void {
     }
     const ws = await WorkspaceManager.create(name, targetPath);
     appConfig.update({ activeWorkspaceId: ws.id });
-    // Seed global memory with teacher profile saved during setup (once, if not yet set)
-    const cfg = appConfig.get();
-    if (cfg.teacherName && !MemoryStore.loadGlobal().user.name) {
-      MemoryStore.updateGlobal({
-        user: { name: cfg.teacherName, subject: cfg.subject, grades: [] },
-      });
-    }
     return ws;
   });
   ipcMain.handle('workspace:setActive', async (_e, id: string) => {
@@ -121,34 +114,11 @@ export function registerHandlers(win: BrowserWindow): void {
   });
 
   // Memory
-  ipcMain.handle('memory:getAll', () => {
-    const { activeWorkspaceId } = appConfig.get();
-    if (!activeWorkspaceId) return null;
-    return MemoryStore.loadAll(activeWorkspaceId);
-  });
-  ipcMain.handle('memory:updateGlobal', (_e, patch: Parameters<typeof MemoryStore.updateGlobal>[0]) => {
-    const res = MemoryStore.updateGlobal(patch);
-    win.webContents.send('memory:updated');
-    return res;
-  });
-  ipcMain.handle('memory:updateWorkspace', (_e, patch: Parameters<typeof MemoryStore.updateWorkspace>[1]) => {
-    const { activeWorkspaceId } = appConfig.get();
-    if (!activeWorkspaceId) return;
-    const res = MemoryStore.updateWorkspace(activeWorkspaceId, patch);
-    win.webContents.send('memory:updated');
-    return res;
-  });
-
-  // Backward compat
   ipcMain.handle('memory:get', () => {
-    const { activeWorkspaceId } = appConfig.get();
-    if (!activeWorkspaceId) return null;
-    return MemoryStore.loadWorkspace(activeWorkspaceId);
+    return MemoryStore.load();
   });
-  ipcMain.handle('memory:update', (_e, patch: Parameters<typeof MemoryStore.update>[1]) => {
-    const { activeWorkspaceId } = appConfig.get();
-    if (!activeWorkspaceId) return;
-    const res = MemoryStore.update(activeWorkspaceId, patch);
+  ipcMain.handle('memory:update', (_e, content: string) => {
+    const res = MemoryStore.update(content);
     win.webContents.send('memory:updated');
     return res;
   });

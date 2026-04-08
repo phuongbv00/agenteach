@@ -28,8 +28,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { AIProvider, AllMemory, MemoryLayer, Plugin } from "../types/api";
+import type { AIProvider, Plugin } from "../types/api";
 import { randomUUID } from "../utils/uuid";
+import { Textarea } from "@/components/ui/textarea";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,58 +50,6 @@ const EMPTY_MCP: Plugin = {
   id: "", type: "mcp", name: "", description: "", triggers: [], prompt: "", command: "", args: [],
 };
 
-interface ListEditorProps {
-  label: string;
-  placeholder: string;
-  items: string[];
-  onAdd: () => void;
-  onChange: (i: number, val: string) => void;
-  onRemove: (i: number) => void;
-}
-
-function ListEditor({
-  label,
-  placeholder,
-  items,
-  onAdd,
-  onChange,
-  onRemove,
-}: ListEditorProps) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <Button variant="ghost" size="xs" onClick={onAdd} className="text-primary">
-          + Thêm
-        </Button>
-      </div>
-      <div className="space-y-1.5">
-        {items.length === 0 && (
-          <p className="text-xs text-muted-foreground italic">Chưa có.</p>
-        )}
-        {items.map((item, i) => (
-          <div key={i} className="flex gap-2">
-            <Input
-              value={item}
-              onChange={(e) => onChange(i, e.target.value)}
-              placeholder={placeholder}
-              className="h-8 text-sm"
-            />
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onRemove(i)}
-              className="text-muted-foreground hover:text-destructive flex-shrink-0"
-            >
-              <X size={14} />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 interface Props {
   onClose: () => void;
 }
@@ -113,7 +62,7 @@ const EMPTY_PROVIDER: AIProvider = {
 };
 
 export default function SettingsPanel({ onClose }: Props) {
-  const { config, setConfig, activeWorkspace } = useAppStore();
+  const { config, setConfig } = useAppStore();
 
   // ── Provider state ───────────────────────────────────────────
   const [providers, setProviders] = useState<AIProvider[]>(
@@ -133,7 +82,7 @@ export default function SettingsPanel({ onClose }: Props) {
   const [checkResult, setCheckResult] = useState<"ok" | "fail" | null>(null);
 
   // ── Memory state ────────────────────────────────────────────
-  const [allMemory, setAllMemory] = useState<AllMemory | null>(null);
+  const [memory, setMemory] = useState<string>("");
   const [memSaving, setMemSaving] = useState(false);
   const [memSaved, setMemSaved] = useState(false);
 
@@ -176,18 +125,14 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   useEffect(() => {
-    if (activeWorkspace) {
-      window.api.getAllMemory().then(setAllMemory);
-    }
+    window.api.getMemory().then((m) => setMemory(m || ""));
     reloadPlugins();
 
     window.api.onMemoryUpdated(() => {
-      if (activeWorkspace) {
-        window.api.getAllMemory().then(setAllMemory);
-      }
+      window.api.getMemory().then((m) => setMemory(m || ""));
     });
     return () => window.api.offMemoryUpdated();
-  }, [activeWorkspace?.id]);
+  }, []);
 
   useEffect(() => {
     const active = providers.find((p) => p.id === activeProviderId);
@@ -242,51 +187,10 @@ export default function SettingsPanel({ onClose }: Props) {
     setConfig(await window.api.getConfig());
   };
 
-  // ── Memory helpers ───────────────────────────────────────────
-  type Layer = "global" | "workspace";
-
-  const setLayer = (layer: Layer, updater: (m: MemoryLayer) => MemoryLayer) =>
-    setAllMemory((all) =>
-      all ? { ...all, [layer]: updater(all[layer]) } : all,
-    );
-
-  const addListItem = (layer: Layer, field: "feedback" | "context") =>
-    setLayer(layer, (m) => ({ ...m, [field]: [...m[field], ""] }));
-
-  const updateListItem = (
-    layer: Layer,
-    field: "feedback" | "context",
-    i: number,
-    val: string,
-  ) =>
-    setLayer(layer, (m) => {
-      const arr = [...m[field]];
-      arr[i] = val;
-      return { ...m, [field]: arr };
-    });
-
-  const removeListItem = (
-    layer: Layer,
-    field: "feedback" | "context",
-    i: number,
-  ) =>
-    setLayer(layer, (m) => ({
-      ...m,
-      [field]: m[field].filter((_, idx) => idx !== i),
-    }));
-
   // ── Memory save ──────────────────────────────────────────────
   const handleSaveMemory = async () => {
-    if (!allMemory) return;
     setMemSaving(true);
-    await Promise.all([
-      window.api.updateGlobalMemory(
-        allMemory.global as unknown as Record<string, unknown>,
-      ),
-      window.api.updateWorkspaceMemory(
-        allMemory.workspace as unknown as Record<string, unknown>,
-      ),
-    ]);
+    await window.api.updateMemory(memory);
     setMemSaving(false);
     setMemSaved(true);
     setTimeout(() => setMemSaved(false), 2000);
@@ -391,7 +295,7 @@ export default function SettingsPanel({ onClose }: Props) {
             ? "Nội dung skill (instructions)"
             : "Instructions bổ sung (nếu có)"}
         </Label>
-        <textarea
+        <Textarea
           value={editingPlugin?.prompt || ""}
           onChange={(e) =>
             setEditingPlugin((prev) =>
@@ -606,105 +510,21 @@ export default function SettingsPanel({ onClose }: Props) {
 
             {/* ── Tab: Memory ── */}
             <TabsContent value="memory">
-              {!activeWorkspace ? (
-                <p className="text-sm text-muted-foreground">
-                  Chọn một workspace để xem bộ nhớ.
-                </p>
-              ) : !allMemory ? (
+              {!memory && memory !== "" ? (
                 <p className="text-sm text-muted-foreground">Đang tải...</p>
               ) : (
-                <div className="space-y-5">
-                  {/* ── Global ── */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="text-primary bg-primary/10">
-                        Toàn cục
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">Áp dụng mọi workspace</p>
-                    </div>
-                    <div className="space-y-2 mb-3">
-                      {(
-                        [
-                          { label: "Tên", key: "name", placeholder: "VD: Nguyễn Thị Lan" },
-                          { label: "Môn dạy", key: "subject", placeholder: "VD: Toán, Ngữ văn..." },
-                          { label: "Lớp dạy", key: "grades", placeholder: "VD: 10A1, 11B2" },
-                        ] as const
-                      ).map(({ label, key, placeholder }) => (
-                        <div key={key} className="flex items-center gap-3">
-                          <Label className="text-sm w-20 flex-shrink-0">{label}</Label>
-                          <Input
-                            value={
-                              key === "grades"
-                                ? allMemory.global.user.grades.join(", ")
-                                : allMemory.global.user[key]
-                            }
-                            onChange={(e) => {
-                              const val =
-                                key === "grades"
-                                  ? e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
-                                  : e.target.value;
-                              setLayer("global", (m) => ({
-                                ...m,
-                                user: { ...m.user, [key]: val },
-                              }));
-                            }}
-                            placeholder={placeholder}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <ListEditor
-                      label="Lưu ý cho trợ lý"
-                      placeholder="VD: Không dùng bullet point"
-                      items={allMemory.global.feedback}
-                      onAdd={() => addListItem("global", "feedback")}
-                      onChange={(i, v) => updateListItem("global", "feedback", i, v)}
-                      onRemove={(i) => removeListItem("global", "feedback", i)}
-                    />
-                    {Object.keys(allMemory.global.style).length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground mb-1">Phong cách (tự học):</p>
-                        {Object.entries(allMemory.global.style).map(([k, v]) => (
-                          <div key={k} className="bg-muted rounded-lg px-3 py-2 text-xs mb-1">
-                            <span className="text-muted-foreground font-medium">{k}:</span>{" "}
-                            <span>{v}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-primary bg-primary/10">
+                      Cá nhân hoá
+                    </Badge>
                   </div>
-
-                  {/* ── Workspace ── */}
-                  <div>
-                    <Separator className="mb-4" />
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="text-primary bg-primary/10">
-                        Workspace
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">
-                        Chỉ trong "{activeWorkspace.name}"
-                      </p>
-                    </div>
-                    <ListEditor
-                      label="Bối cảnh dự án"
-                      placeholder="VD: Đang soạn đề HK1 môn Toán 10"
-                      items={allMemory.workspace.context}
-                      onAdd={() => addListItem("workspace", "context")}
-                      onChange={(i, v) => updateListItem("workspace", "context", i, v)}
-                      onRemove={(i) => removeListItem("workspace", "context", i)}
-                    />
-                    <div className="mt-3">
-                      <ListEditor
-                        label="Lưu ý riêng workspace"
-                        placeholder="VD: Tài liệu lưu trong thư mục De_thi"
-                        items={allMemory.workspace.feedback}
-                        onAdd={() => addListItem("workspace", "feedback")}
-                        onChange={(i, v) => updateListItem("workspace", "feedback", i, v)}
-                        onRemove={(i) => removeListItem("workspace", "feedback", i)}
-                      />
-                    </div>
-                  </div>
+                  <Textarea
+                    value={memory}
+                    onChange={(e) => setMemory(e.target.value)}
+                    placeholder="Nhập thông tin cá nhân hoá. Cú pháp khuyến nghị: Markdown"
+                    className="min-h-50"
+                  />
                 </div>
               )}
             </TabsContent>
@@ -885,7 +705,7 @@ export default function SettingsPanel({ onClose }: Props) {
           <Button variant="outline" onClick={onClose}>
             Đóng
           </Button>
-          {tab === "memory" && activeWorkspace && allMemory && (
+          {tab === "memory" && memory !== null && (
             <Button onClick={handleSaveMemory} disabled={memSaving}>
               {memSaved ? (
                 <span className="flex items-center gap-1">

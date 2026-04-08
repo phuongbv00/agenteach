@@ -4,62 +4,28 @@ import { MemoryStore } from '../../memory/MemoryStore';
 import { BrowserWindow } from 'electron';
 
 const memoryInputSchema = z.object({
-  layer: z.enum(['global', 'workspace']).describe('Lớp memory: global (áp dụng toàn bộ) / workspace (áp dụng trong workspace này)'),
-  type: z.enum(['user', 'style', 'feedback', 'context']).describe('Loại thông tin'),
-  content: z.string().describe('Nội dung cần ghi nhớ'),
-  key: z.string().optional().describe('Key cho style (VD: "lesson_plan_format")'),
+  action: z.enum(['append', 'replace']).describe('Gắn thêm (append) hoặc ghi đè toàn bộ (replace) memory'),
+  content: z.string().describe('Nội dung markdown cần lưu cho bộ nhớ'),
 });
 
 type MemoryInput = z.infer<typeof memoryInputSchema>;
 
-export function createMemoryTool(workspaceId: string, win?: BrowserWindow) {
+export function createMemoryTool(win?: BrowserWindow) {
   return tool({
-    description: 'Ghi nhớ thông tin quan trọng vào memory: global (áp dụng toàn bộ) hoặc workspace (áp dụng trong workspace này)',
+    description: 'Cập nhật bộ nhớ chung. Chỉ gồm markdown',
     inputSchema: zodSchema(memoryInputSchema),
     execute: async (input: MemoryInput) => {
-      const { layer, type, content, key } = input;
-      const patch = buildPatch(type, content, key, workspaceId, layer);
-
-      if (layer === 'global') {
-        MemoryStore.updateGlobal(patch);
+      if (input.action === 'append') {
+        MemoryStore.append(input.content);
       } else {
-        MemoryStore.updateWorkspace(workspaceId, patch);
+        MemoryStore.update(input.content);
       }
 
       if (win) {
         win.webContents.send('memory:updated');
       }
 
-      return `Đã ghi nhớ nội dung vào lớp ${layer}.`;
+      return `Đã cập nhật bộ nhớ.`;
     },
   });
-}
-
-function buildPatch(
-  type: 'user' | 'style' | 'feedback' | 'context',
-  content: string,
-  key: string | undefined,
-  workspaceId: string,
-  layer: string,
-): Record<string, unknown> {
-  const current = layer === 'global'
-    ? MemoryStore.loadGlobal()
-    : MemoryStore.loadWorkspace(workspaceId);
-
-  if (type === 'feedback') {
-    return { feedback: [...current.feedback.slice(-9), content] };
-  }
-  if (type === 'context') {
-    return { context: [...current.context.slice(-4), content] };
-  }
-  if (type === 'style' && key) {
-    return { style: { ...current.style, [key]: content } };
-  }
-  if (type === 'user') {
-    const [k, ...rest] = content.split(':');
-    if (k && rest.length) {
-      return { user: { ...current.user, [k.trim()]: rest.join(':').trim() } };
-    }
-  }
-  return {};
 }
