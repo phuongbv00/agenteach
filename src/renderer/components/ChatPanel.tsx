@@ -9,14 +9,14 @@ import {
   ToolCallBubble,
 } from "./MessageBubble";
 import type { ToolCallEvent } from "../types/api";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/renderer/components/ui/button";
+import { Textarea } from "@/renderer/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/renderer/components/ui/dropdown-menu";
 
 export default function ChatPanel() {
   const {

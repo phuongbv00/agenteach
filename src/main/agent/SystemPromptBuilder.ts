@@ -1,5 +1,4 @@
 import fs from "fs";
-import type { MemoryLayer } from "../memory/MemoryStore";
 import { MemoryStore } from "../memory/MemoryStore";
 import type { Workspace } from "../workspace/WorkspaceManager";
 import type { Plugin } from "../plugins/PluginLoader";
@@ -16,7 +15,7 @@ function fill(template: string, vars: Record<string, string>): string {
 
 
 export function buildSystemPrompt(
-  memory: MemoryLayer,
+  memory: string,
   workspace: Workspace,
   activePlugin: Plugin | null = null,
 ): string {

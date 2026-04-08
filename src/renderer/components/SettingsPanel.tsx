@@ -1,16 +1,16 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/renderer/components/ui/badge";
+import { Button } from "@/renderer/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/renderer/components/ui/dialog";
+import { Input } from "@/renderer/components/ui/input";
+import { Label } from "@/renderer/components/ui/label";
+import { Separator } from "@/renderer/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/renderer/components/ui/tabs";
 import {
   Brain,
   Check,
@@ -30,7 +30,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import type { AIProvider, Plugin } from "../types/api";
 import { randomUUID } from "../utils/uuid";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/renderer/components/ui/textarea";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

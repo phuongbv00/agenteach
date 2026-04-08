@@ -12,10 +12,10 @@ import {
 import { useAppStore } from "../stores/appStore";
 import { useChatStore } from "../stores/chatStore";
 import type { Workspace, Session, Artifact } from "../types/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/renderer/components/ui/button";
+import { Input } from "@/renderer/components/ui/input";
+import { Badge } from "@/renderer/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/renderer/components/ui/collapsible";
 
 interface Props {
   onWorkspaceChange: () => void;

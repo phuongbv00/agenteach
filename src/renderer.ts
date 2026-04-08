@@ -1,5 +1,5 @@
 import 'electron-log/renderer'; // forwards console.* to main-process log file
-import './index.css';
+import './renderer/assets/index.css';
 import { createRoot } from 'react-dom/client';
 import { createElement } from 'react';
 import App from './renderer/App';

@@ -5,8 +5,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+} from '@/renderer/components/ui/dialog';
+import { Button } from '@/renderer/components/ui/button';
 
 export default function HitlApprovalDialog() {
   const [request, setRequest] = useState<HitlRequest | null>(null);

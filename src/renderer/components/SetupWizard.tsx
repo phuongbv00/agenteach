@@ -2,9 +2,9 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Folder, X } from "lucide-react";
 import type { AIProvider } from "../types/api";
 import iconUrl from "../assets/icon.jpeg";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/renderer/components/ui/button";
+import { Input } from "@/renderer/components/ui/input";
+import { Label } from "@/renderer/components/ui/label";
 
 interface Props {
   onComplete: () => void;
