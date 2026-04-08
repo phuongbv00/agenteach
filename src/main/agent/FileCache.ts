@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const CACHE_ROOT = path.join(os.homedir(), '.agenteach', '.cache', 'files');
+const CACHE_ROOT = path.join(os.homedir(), '.agenteach', 'cache', 'files');
 
 interface CacheMeta {
   mtime: number;
