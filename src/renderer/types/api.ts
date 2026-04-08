@@ -143,6 +143,7 @@ declare global {
       readFileBinary(filePath: string): Promise<Uint8Array>;
       readDocxHtml(filePath: string): Promise<string>;
       openFile(filePath: string): Promise<void>;
+      showInFolder(filePath: string): Promise<void>;
 
       listPlugins(): Promise<Plugin[]>;
       savePlugin(plugin: Plugin): Promise<void>;

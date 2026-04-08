@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { tool, zodSchema } from 'ai';
 import { z } from 'zod';
@@ -17,7 +18,6 @@ export async function requestHitl(
   workspaceId: string,
   win: BrowserWindow
 ): Promise<boolean> {
-  if (action === 'read') return true;
   const status = PermissionManager.check(action, workspaceId);
   if (status === 'granted') return true;
   if (status === 'denied') return false;
@@ -73,22 +73,25 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
   const wsPath = path.resolve(workspace.path);
 
   function resolveWorkspacePath(filePath: string): string {
-    if (path.isAbsolute(filePath)) {
-      return path.resolve(filePath);
+    const expanded = filePath.startsWith('~/') || filePath === '~'
+      ? path.join(os.homedir(), filePath.slice(1))
+      : filePath;
+    if (path.isAbsolute(expanded)) {
+      return path.resolve(expanded);
     }
-    const normalised = (!filePath || filePath === '.' || filePath === workspace.name) ? '.' : filePath;
-    const resolved = path.resolve(wsPath, normalised);
-    if (!resolved.startsWith(wsPath + path.sep) && resolved !== wsPath) {
-      throw new Error(`"${filePath}" nằm ngoài workspace. Dùng đường dẫn tuyệt đối nếu muốn truy cập bên ngoài.`);
-    }
-    return resolved;
+    const normalised = (!expanded || expanded === '.' || expanded === workspace.name) ? '.' : expanded;
+    return path.resolve(wsPath, normalised);
+  }
+
+  function inWorkspace(resolved: string): boolean {
+    return resolved.startsWith(wsPath + path.sep) || resolved === wsPath;
   }
 
   return {
     list_directory: tool({
-      description: `Liệt kê file và thư mục trong workspace. Workspace root = "${wsPath}". Dùng dir_path="" hoặc "." để liệt kê root. Dùng tên thư mục con tương đối (VD: "docs", "HN26_FR_AI_01") để đi sâu hơn.`,
+      description: `Liệt kê file và thư mục. Workspace root = "${wsPath}". Dùng dir_path="" hoặc "." để liệt kê workspace root. Hỗ trợ đường dẫn tuyệt đối (/Users/..., ~/...) để xem thư mục ngoài workspace.`,
       inputSchema: zodSchema(z.object({
-        dir_path: z.string().describe(`Thư mục cần liệt kê. Để trống hoặc "." = workspace root (${wsPath}). Tên con tương đối: "subfolder", "a/b"`),
+        dir_path: z.string().describe(`Thư mục cần liệt kê. "" hoặc "." = workspace root (${wsPath}). Tương đối: "subfolder". Tuyệt đối: "/Users/foo/bar" hoặc "~/Projects"`),
         recursive: z.boolean().optional().describe('Liệt kê đệ quy các thư mục con'),
       })),
       execute: async (input: { dir_path: string; recursive?: boolean }) => {
@@ -127,13 +130,17 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
     }),
 
     read_file: tool({
-      description: `Đọc nội dung file trong workspace (.txt, .md, .docx, .pdf). Nội dung .docx và .pdf được parse về Markdown. Dùng đường dẫn tương đối từ workspace root (${wsPath}). VD: "HN26_FR_AI_01/syllabus.md"`,
+      description: `Đọc nội dung file (.txt, .md, .docx, .pdf). Nội dung .docx và .pdf được parse về Markdown. Ưu tiên dùng đường dẫn tuyệt đối. Hỗ trợ: tuyệt đối ("/Users/foo/file.md", "~/Projects/file.md"), tương đối trong workspace ("folder/file.md").`,
       inputSchema: zodSchema(z.object({
-        file_path: z.string().describe('Đường dẫn file tương đối trong workspace, VD: "folder/file.md"'),
+        file_path: z.string().describe('Đường dẫn file. Ưu tiên absolute path: "/Users/foo/file.md" hoặc "~/Projects/file.md". Hoặc tương đối trong workspace: "folder/file.md"'),
       })),
       execute: async (input: { file_path: string }) => {
         try {
           const resolved = resolveWorkspacePath(input.file_path);
+          if (!inWorkspace(resolved)) {
+            const approved = await requestHitl('read', resolved, workspace.id, win);
+            if (!approved) return 'Người dùng từ chối cho phép đọc file này.';
+          }
           const fileName = path.basename(resolved);
           return await readFileContent(resolved, (stage) => {
             win.webContents.send('agent:fileProgress', { fileName, stage });
@@ -145,9 +152,9 @@ export function createFileTools(workspace: Workspace, win: BrowserWindow, index:
     }),
 
     write_file: tool({
-      description: 'Ghi nội dung vào file trong workspace',
+      description: 'Ghi nội dung vào file. Hỗ trợ đường dẫn tuyệt đối (/Users/..., ~/...) và tương đối trong workspace.',
       inputSchema: zodSchema(z.object({
-        file_path: z.string().describe('Đường dẫn file cần ghi'),
+        file_path: z.string().describe('Đường dẫn file cần ghi. Ưu tiên absolute path: "/Users/foo/file.md" hoặc "~/Projects/file.md"'),
         content: z.string().describe('Nội dung cần ghi vào file'),
       })),
       execute: async (input: { file_path: string; content: string }) => {

@@ -7,7 +7,6 @@ import { BrowserWindow } from 'electron';
 import { marked } from 'marked';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import mammoth from 'mammoth';
-import { requestHitl } from './FileTools';
 import { FileCache } from '../FileCache';
 import { ArtifactStore } from '../../sessions/ArtifactStore';
 import type { Workspace } from '../../workspace/WorkspaceManager';
@@ -149,19 +148,17 @@ export async function docxToHtml(filePath: string): Promise<string> {
 export function createExportTools(
   workspace: Workspace,
   win: BrowserWindow,
-  index: WorkspaceIndex,
+  _index: WorkspaceIndex,
   sessionId: string | undefined,
 ) {
-  const wsPath = path.resolve(workspace.path);
+  function artifactsDir(): string {
+    return path.join(os.homedir(), '.agenteach', 'cache', 'artifacts', workspace.id, sessionId ?? 'default');
+  }
 
-  function resolveWorkspacePath(filePath: string): string {
-    const resolved = path.isAbsolute(filePath)
-      ? path.resolve(filePath)
-      : path.resolve(wsPath, filePath);
-    if (!resolved.startsWith(wsPath + path.sep) && resolved !== wsPath) {
-      throw new Error(`"${filePath}" nằm ngoài workspace.`);
-    }
-    return resolved;
+  function resolveArtifactPath(fileName: string): string {
+    const dir = artifactsDir();
+    fs.mkdirSync(dir, { recursive: true });
+    return path.join(dir, path.basename(fileName));
   }
 
   async function trackAndPreview(filePath: string, type: 'md' | 'pdf' | 'docx'): Promise<void> {
@@ -176,24 +173,20 @@ export function createExportTools(
   return {
     create_markdown: tool({
       description:
-        'Tạo file Markdown (.md) trong workspace với nội dung được cung cấp. File sẽ tự động mở xem trước ở thanh bên phải và được lưu vào danh sách tài liệu của phiên làm việc.',
+        'Tạo file Markdown (.md) với nội dung được cung cấp. File sẽ tự động mở xem trước ở thanh bên phải và được lưu vào danh sách tài liệu của phiên làm việc.',
       inputSchema: zodSchema(
         z.object({
-          file_path: z.string().describe('Đường dẫn file .md cần tạo (tương đối trong workspace), VD: "bai_giang/tuan1.md"'),
+          file_name: z.string().describe('Tên file .md cần tạo, VD: "tuan1.md"'),
           content: z.string().describe('Nội dung Markdown của file'),
         }),
       ),
-      execute: async (input: { file_path: string; content: string }) => {
-        const resolved = resolveWorkspacePath(input.file_path);
-        const approved = await requestHitl('write', resolved, workspace.id, win);
-        if (!approved) return 'Người dùng từ chối cho phép tạo file này.';
+      execute: async (input: { file_name: string; content: string }) => {
         try {
-          fs.mkdirSync(path.dirname(resolved), { recursive: true });
+          const resolved = resolveArtifactPath(input.file_name);
           fs.writeFileSync(resolved, input.content, 'utf-8');
           FileCache.invalidate(resolved);
-          index.build();
           await trackAndPreview(resolved, 'md');
-          return `Đã tạo file Markdown: ${path.relative(wsPath, resolved)}`;
+          return `Đã tạo file Markdown: ${resolved}`;
         } catch (e) {
           return `Lỗi khi tạo file: ${String(e)}`;
         }
@@ -205,22 +198,18 @@ export function createExportTools(
         'Tạo file PDF từ nội dung Markdown với định dạng đẹp (tiêu đề, đoạn văn, bảng, danh sách...). File sẽ tự động mở xem trước và được lưu vào danh sách tài liệu của phiên làm việc.',
       inputSchema: zodSchema(
         z.object({
-          file_path: z.string().describe('Đường dẫn file .pdf cần tạo (tương đối trong workspace), VD: "de_cuong/hoc_ky1.pdf"'),
+          file_name: z.string().describe('Tên file .pdf cần tạo, VD: "hoc_ky1.pdf"'),
           content: z.string().describe('Nội dung Markdown sẽ được chuyển đổi thành PDF'),
         }),
       ),
-      execute: async (input: { file_path: string; content: string }) => {
-        const resolved = resolveWorkspacePath(input.file_path);
-        const approved = await requestHitl('write', resolved, workspace.id, win);
-        if (!approved) return 'Người dùng từ chối cho phép tạo file này.';
+      execute: async (input: { file_name: string; content: string }) => {
         try {
-          fs.mkdirSync(path.dirname(resolved), { recursive: true });
-          win.webContents.send('agent:fileProgress', { fileName: path.basename(resolved), stage: 'parsing' });
+          const resolved = resolveArtifactPath(input.file_name);
+          win.webContents.send('agent:fileProgress', { fileName: input.file_name, stage: 'parsing' });
           const buf = await buildPdfBuffer(input.content);
           fs.writeFileSync(resolved, buf);
-          index.build();
           await trackAndPreview(resolved, 'pdf');
-          return `Đã tạo file PDF: ${path.relative(wsPath, resolved)}`;
+          return `Đã tạo file PDF: ${resolved}`;
         } catch (e) {
           return `Lỗi khi tạo PDF: ${String(e)}`;
         }
@@ -232,21 +221,17 @@ export function createExportTools(
         'Tạo file Word (.docx) từ nội dung Markdown với các kiểu định dạng: tiêu đề các cấp, đoạn văn, danh sách, in đậm/nghiêng. File sẽ tự động mở xem trước và được lưu vào danh sách tài liệu của phiên làm việc.',
       inputSchema: zodSchema(
         z.object({
-          file_path: z.string().describe('Đường dẫn file .docx cần tạo (tương đối trong workspace), VD: "giao_an/tuan2.docx"'),
+          file_name: z.string().describe('Tên file .docx cần tạo, VD: "tuan2.docx"'),
           content: z.string().describe('Nội dung Markdown sẽ được chuyển đổi thành DOCX'),
         }),
       ),
-      execute: async (input: { file_path: string; content: string }) => {
-        const resolved = resolveWorkspacePath(input.file_path);
-        const approved = await requestHitl('write', resolved, workspace.id, win);
-        if (!approved) return 'Người dùng từ chối cho phép tạo file này.';
+      execute: async (input: { file_name: string; content: string }) => {
         try {
-          fs.mkdirSync(path.dirname(resolved), { recursive: true });
+          const resolved = resolveArtifactPath(input.file_name);
           const buf = await buildDocxBuffer(input.content);
           fs.writeFileSync(resolved, buf);
-          index.build();
           await trackAndPreview(resolved, 'docx');
-          return `Đã tạo file Word: ${path.relative(wsPath, resolved)}`;
+          return `Đã tạo file Word: ${resolved}`;
         } catch (e) {
           return `Lỗi khi tạo DOCX: ${String(e)}`;
         }

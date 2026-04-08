@@ -2,6 +2,7 @@ import { Button } from "@/renderer/components/ui/button";
 import "katex/dist/katex.min.css";
 import {
   ExternalLink,
+  FolderOpen,
   X
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
@@ -131,6 +132,14 @@ export default function PreviewPanel({ data, onClose }: Props) {
           >
             {data.fileName}
           </span>
+          <Button
+            onClick={() => window.api.showInFolder(data.filePath)}
+            title="Mở thư mục chứa file"
+            variant="ghost"
+            size="icon"
+          >
+            <FolderOpen size={14} />
+          </Button>
           <Button
             onClick={() => window.api.openFile(data.filePath)}
             title="Mở bằng ứng dụng mặc định"

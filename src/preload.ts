@@ -120,6 +120,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Open with default app
   openFile: (filePath: string) => ipcRenderer.invoke('shell:openFile', filePath),
+  showInFolder: (filePath: string) => ipcRenderer.invoke('shell:showInFolder', filePath),
 
   // Plugins
   listPlugins: () => ipcRenderer.invoke('plugins:list'),

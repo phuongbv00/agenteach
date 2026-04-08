@@ -148,6 +148,11 @@ export function registerHandlers(win: BrowserWindow): void {
     await shell.openPath(filePath);
   });
 
+  // Show file in folder
+  ipcMain.handle('shell:showInFolder', (_e, filePath: string) => {
+    shell.showItemInFolder(filePath);
+  });
+
   // Plugins
   ipcMain.handle('plugins:list', () => {
     return PluginLoader.load();

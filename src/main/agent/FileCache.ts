@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const CACHE_ROOT = path.join(os.homedir(), '.agenteach', 'cache', 'files');
+const CACHE_ROOT = path.join(os.homedir(), '.agenteach', 'cache');
 
 interface CacheMeta {
   mtime: number;
@@ -11,7 +11,7 @@ interface CacheMeta {
 function cacheContentPath(filePath: string): string {
   // Strip leading slash so path.join works correctly
   const relative = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-  const base = path.join(CACHE_ROOT, relative);
+  const base = path.join(CACHE_ROOT, 'read_file', relative);
   // Parsed binary formats are stored as Markdown: file.pdf → file.pdf.md
   const ext = path.extname(filePath).toLowerCase();
   if (ext === '.pdf' || ext === '.docx') return base + '.md';

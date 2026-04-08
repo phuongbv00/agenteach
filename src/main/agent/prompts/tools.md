@@ -20,8 +20,8 @@ Liệt kê nội dung thư mục.
 Đọc nội dung file (.txt, .md, .docx, .pdf).
 - **Dùng khi:** Cần biết nội dung cụ thể của file trước khi trả lời hoặc tạo tài liệu mới.
 - **BẮT BUỘC** đọc file nguồn trước khi soạn tài liệu dựa trên đó.
-- **LUÔN dùng absolute path** (VD: `/Users/.../workspace/folder/file.md`).
-- Nếu trả về lỗi "no such file" → gọi `find_files` để tìm đúng path → thử lại.
+- **LUÔN dùng absolute path**: `/Users/.../file.md` hoặc `~/Projects/file.md`. Tương đối chỉ dùng khi chắc chắn file nằm trong workspace.
+- Nếu trả về lỗi "no such file" → gọi `find_files` để tìm đúng path → thử lại với absolute path chính xác.
 
 ### `search_in_files`
 Tìm kiếm nội dung văn bản bên trong các file.
