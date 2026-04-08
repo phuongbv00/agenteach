@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono";
@@ -140,9 +141,9 @@ html, body, #root {
 }
 
 .prose p { margin: 0.35rem 0; }
-.prose ul { margin: 0.35rem 0; padding-left: 1.25rem; }
-.prose ol { margin: 0.35rem 0; padding-left: 1.25rem; }
-.prose li { margin: 0.1rem 0; }
+.prose ul { margin: 0.35rem 0; padding-left: 1.75rem; list-style-type: disc; }
+.prose ol { margin: 0.35rem 0; padding-left: 1.75rem; list-style-type: decimal; }
+.prose li { margin: 0.1rem 0; display: list-item; }
 .prose pre { white-space: pre-wrap; margin: 0.5rem 0; }
 .prose code:not(pre code) {
   background: #f3f4f6;

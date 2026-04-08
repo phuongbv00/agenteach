@@ -110,7 +110,7 @@ const PDF_CSS = `
   th, td { border: 1px solid #ccc; padding: 7px 12px; text-align: left; }
   th { background: #f0f0f0; font-weight: 600; }
   blockquote { border-left: 4px solid #bbb; margin: 0 0 0 8px; padding: 4px 16px; color: #555; }
-  ul, ol { padding-left: 24px; }
+  ul, ol { padding-left: 1.75rem; list-style-type: initial; }
   li { margin: 3px 0; }
   hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
   p { margin: 8px 0; }
