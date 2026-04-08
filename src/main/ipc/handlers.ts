@@ -76,7 +76,7 @@ export function registerHandlers(win: BrowserWindow): void {
       if (result.canceled || !result.filePaths[0]) return null;
       targetPath = result.filePaths[0];
     }
-    const ws = WorkspaceManager.create(name, targetPath);
+    const ws = await WorkspaceManager.create(name, targetPath);
     appConfig.update({ activeWorkspaceId: ws.id });
     // Seed global memory with teacher profile saved during setup (once, if not yet set)
     const cfg = appConfig.get();
@@ -87,15 +87,15 @@ export function registerHandlers(win: BrowserWindow): void {
     }
     return ws;
   });
-  ipcMain.handle('workspace:setActive', (_e, id: string) => {
-    WorkspaceManager.touch(id);
+  ipcMain.handle('workspace:setActive', async (_e, id: string) => {
+    await WorkspaceManager.touch(id);
     appConfig.update({ activeWorkspaceId: id });
   });
-  ipcMain.handle('workspace:delete', (_e, id: string) => {
-    WorkspaceManager.delete(id);
+  ipcMain.handle('workspace:delete', async (_e, id: string) => {
+    await WorkspaceManager.delete(id);
     const config = appConfig.get();
     if (config.activeWorkspaceId === id) {
-      const remaining = WorkspaceManager.list();
+      const remaining = await WorkspaceManager.list();
       appConfig.update({ activeWorkspaceId: remaining[0]?.id ?? null });
     }
   });
@@ -107,17 +107,17 @@ export function registerHandlers(win: BrowserWindow): void {
   ipcMain.handle('session:create', (_e, workspaceId: string) => {
     return SessionStore.create(workspaceId);
   });
-  ipcMain.handle('session:rename', (_e, workspaceId: string, sessionId: string, name: string) => {
-    SessionStore.rename(workspaceId, sessionId, name);
+  ipcMain.handle('session:rename', async (_e, workspaceId: string, sessionId: string, name: string) => {
+    await SessionStore.rename(workspaceId, sessionId, name);
   });
-  ipcMain.handle('session:delete', (_e, workspaceId: string, sessionId: string) => {
-    SessionStore.delete(workspaceId, sessionId);
+  ipcMain.handle('session:delete', async (_e, workspaceId: string, sessionId: string) => {
+    await SessionStore.delete(workspaceId, sessionId);
   });
   ipcMain.handle('session:loadMessages', (_e, workspaceId: string, sessionId: string) => {
     return SessionStore.loadMessages(workspaceId, sessionId);
   });
-  ipcMain.handle('session:saveMessages', (_e, workspaceId: string, sessionId: string, items: Parameters<typeof SessionStore.saveMessages>[2]) => {
-    SessionStore.saveMessages(workspaceId, sessionId, items);
+  ipcMain.handle('session:saveMessages', async (_e, workspaceId: string, sessionId: string, items: Parameters<typeof SessionStore.saveMessages>[2]) => {
+    await SessionStore.saveMessages(workspaceId, sessionId, items);
   });
 
   // Memory
@@ -157,8 +157,8 @@ export function registerHandlers(win: BrowserWindow): void {
   ipcMain.handle('artifact:list', (_e, workspaceId: string, sessionId: string) => {
     return ArtifactStore.list(workspaceId, sessionId);
   });
-  ipcMain.handle('artifact:delete', (_e, workspaceId: string, sessionId: string, artifactId: string) => {
-    ArtifactStore.delete(workspaceId, sessionId, artifactId);
+  ipcMain.handle('artifact:delete', async (_e, workspaceId: string, sessionId: string, artifactId: string) => {
+    await ArtifactStore.delete(workspaceId, sessionId, artifactId);
   });
 
   // File read helpers for preview

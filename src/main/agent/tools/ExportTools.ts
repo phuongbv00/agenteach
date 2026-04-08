@@ -164,10 +164,10 @@ export function createExportTools(
     return resolved;
   }
 
-  function trackAndPreview(filePath: string, type: 'md' | 'pdf' | 'docx'): void {
+  async function trackAndPreview(filePath: string, type: 'md' | 'pdf' | 'docx'): Promise<void> {
     const fileName = path.basename(filePath);
     if (sessionId) {
-      const artifact = ArtifactStore.add({ sessionId, workspaceId: workspace.id, filePath, fileName, type });
+      const artifact = await ArtifactStore.add({ sessionId, workspaceId: workspace.id, filePath, fileName, type });
       win.webContents.send('artifact:created', artifact);
     }
     win.webContents.send('file:preview', { type, fileName, filePath });
@@ -192,7 +192,7 @@ export function createExportTools(
           fs.writeFileSync(resolved, input.content, 'utf-8');
           FileCache.invalidate(resolved);
           index.build();
-          trackAndPreview(resolved, 'md');
+          await trackAndPreview(resolved, 'md');
           return `Đã tạo file Markdown: ${path.relative(wsPath, resolved)}`;
         } catch (e) {
           return `Lỗi khi tạo file: ${String(e)}`;
@@ -219,7 +219,7 @@ export function createExportTools(
           const buf = await buildPdfBuffer(input.content);
           fs.writeFileSync(resolved, buf);
           index.build();
-          trackAndPreview(resolved, 'pdf');
+          await trackAndPreview(resolved, 'pdf');
           return `Đã tạo file PDF: ${path.relative(wsPath, resolved)}`;
         } catch (e) {
           return `Lỗi khi tạo PDF: ${String(e)}`;
@@ -245,7 +245,7 @@ export function createExportTools(
           const buf = await buildDocxBuffer(input.content);
           fs.writeFileSync(resolved, buf);
           index.build();
-          trackAndPreview(resolved, 'docx');
+          await trackAndPreview(resolved, 'docx');
           return `Đã tạo file Word: ${path.relative(wsPath, resolved)}`;
         } catch (e) {
           return `Lỗi khi tạo DOCX: ${String(e)}`;

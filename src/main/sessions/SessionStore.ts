@@ -1,124 +1,212 @@
-import fs from 'fs';
-import path from 'path';
-import { dataDir } from '../utils/dataDir';
-import { generateId } from '../utils/generateId';
+import type { InValue } from "@libsql/client"
+import { getDb } from "../db"
+import { generateId } from "../utils/generateId"
 
 export interface Session {
-  id: string;
-  workspaceId: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
+  id: string
+  workspaceId: string
+  name: string
+  createdAt: number
+  updatedAt: number
 }
 
-// Legacy format (v1) – kept for migration only
-export interface StoredMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-// Structured format (v2)
 export type StoredChatItem =
-  | { type: 'user_message'; content: string }
-  | { type: 'assistant_message'; thinking?: string; content: string }
-  | { type: 'tool_call'; toolName: string; label: string; args: Record<string, unknown>; result: string };
+  | { type: "user_message"; content: string }
+  | { type: "assistant_message"; thinking?: string; content: string }
+  | {
+      type: "tool_call"
+      toolName: string
+      label: string
+      args: Record<string, unknown>
+      result: string
+    }
 
-function migrateItems(raw: unknown[]): StoredChatItem[] {
-  if (!raw.length) return [];
-  // v1: items have a `role` field instead of `type`
-  if ((raw[0] as Record<string, unknown>).role !== undefined) {
-    return (raw as StoredMessage[]).map((m) =>
-      m.role === 'user'
-        ? { type: 'user_message', content: m.content }
-        : { type: 'assistant_message', content: m.content }
-    );
+function rowToSession(row: Record<string, unknown>): Session {
+  return {
+    id: row.id as string,
+    workspaceId: row.workspace_id as string,
+    name: row.name as string,
+    createdAt: row.created_at as number,
+    updatedAt: row.updated_at as number,
   }
-  return raw as StoredChatItem[];
 }
 
-function sessionsDir(workspaceId: string): string {
-  return dataDir('workspaces', workspaceId, 'sessions');
-}
-
-function indexPath(workspaceId: string): string {
-  return path.join(sessionsDir(workspaceId), 'index.json');
-}
-
-function sessionDir(workspaceId: string, sessionId: string): string {
-  return path.join(sessionsDir(workspaceId), sessionId);
-}
-
-function messagesPath(workspaceId: string, sessionId: string): string {
-  return path.join(sessionDir(workspaceId, sessionId), 'messages.json');
+function rowToItem(row: Record<string, unknown>): StoredChatItem {
+  const type = row.type as string
+  if (type === "user_message") {
+    return { type: "user_message", content: row.content as string }
+  }
+  if (type === "assistant_message") {
+    return {
+      type: "assistant_message",
+      content: row.content as string,
+      ...(row.thinking ? { thinking: row.thinking as string } : {}),
+    }
+  }
+  return {
+    type: "tool_call",
+    toolName: row.tool_name as string,
+    label: row.label as string,
+    args: JSON.parse((row.args as string) ?? "{}"),
+    result: (row.result as string) ?? "",
+  }
 }
 
 export const SessionStore = {
-  list(workspaceId: string): Session[] {
-    try {
-      const raw = fs.readFileSync(indexPath(workspaceId), 'utf-8');
-      const sessions = JSON.parse(raw) as Session[];
-      return sessions.sort((a, b) => b.updatedAt - a.updatedAt);
-    } catch {
-      return [];
-    }
+  async list(workspaceId: string): Promise<Session[]> {
+    const db = getDb()
+    const res = await db.execute({
+      sql: "SELECT * FROM sessions WHERE workspace_id = ? ORDER BY updated_at DESC",
+      args: [workspaceId],
+    })
+    return res.rows.map((r) => rowToSession(r as Record<string, unknown>))
   },
 
-  create(workspaceId: string, name = 'Phiên mới'): Session {
+  async create(workspaceId: string, name = "Phiên mới"): Promise<Session> {
+    const db = getDb()
     const session: Session = {
-      id: 'SS-' + generateId(),
+      id: "SS-" + generateId(),
       workspaceId,
       name,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    };
-    fs.mkdirSync(sessionDir(workspaceId, session.id), { recursive: true });
-
-    const existing: Session[] = this.list(workspaceId);
-    fs.writeFileSync(indexPath(workspaceId), JSON.stringify([...existing, session], null, 2));
-    fs.writeFileSync(messagesPath(workspaceId, session.id), '[]');
-    return session;
-  },
-
-  rename(workspaceId: string, sessionId: string, name: string): void {
-    const sessions: Session[] = this.list(workspaceId);
-    const s = sessions.find((x: Session) => x.id === sessionId);
-    if (s) {
-      s.name = name;
-      s.updatedAt = Date.now();
-      fs.writeFileSync(indexPath(workspaceId), JSON.stringify(sessions, null, 2));
     }
+    await db.execute({
+      sql: "INSERT INTO sessions (id, workspace_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      args: [
+        session.id,
+        session.workspaceId,
+        session.name,
+        session.createdAt,
+        session.updatedAt,
+      ],
+    })
+    return session
   },
 
-  delete(workspaceId: string, sessionId: string): void {
-    const sessions = this.list(workspaceId).filter((s: Session) => s.id !== sessionId);
-    fs.writeFileSync(indexPath(workspaceId), JSON.stringify(sessions, null, 2));
-    try { fs.rmSync(sessionDir(workspaceId, sessionId), { recursive: true, force: true }); } catch { /* ok */ }
+  async rename(
+    workspaceId: string,
+    sessionId: string,
+    name: string,
+  ): Promise<void> {
+    const db = getDb()
+    await db.execute({
+      sql: "UPDATE sessions SET name = ?, updated_at = ? WHERE id = ? AND workspace_id = ?",
+      args: [name, Date.now(), sessionId, workspaceId],
+    })
   },
 
-  loadMessages(workspaceId: string, sessionId: string): StoredChatItem[] {
-    try {
-      const raw = JSON.parse(fs.readFileSync(messagesPath(workspaceId, sessionId), 'utf-8'));
-      return migrateItems(raw);
-    } catch {
-      return [];
+  async delete(workspaceId: string, sessionId: string): Promise<void> {
+    const db = getDb()
+    await db.batch(
+      [
+        {
+          sql: "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
+          args: [sessionId, workspaceId],
+        },
+        {
+          sql: "DELETE FROM artifacts WHERE session_id = ? AND workspace_id = ?",
+          args: [sessionId, workspaceId],
+        },
+        {
+          sql: "DELETE FROM sessions WHERE id = ? AND workspace_id = ?",
+          args: [sessionId, workspaceId],
+        },
+      ],
+      "write",
+    )
+  },
+
+  async loadMessages(
+    workspaceId: string,
+    sessionId: string,
+  ): Promise<StoredChatItem[]> {
+    const db = getDb()
+    const res = await db.execute({
+      sql: "SELECT * FROM messages WHERE session_id = ? AND workspace_id = ? ORDER BY position ASC",
+      args: [sessionId, workspaceId],
+    })
+    return res.rows.map((r) => rowToItem(r as Record<string, unknown>))
+  },
+
+  async saveMessages(
+    workspaceId: string,
+    sessionId: string,
+    messages: StoredChatItem[],
+  ): Promise<void> {
+    const db = getDb()
+
+    // Auto-name from first user message
+    let autoName: string | null = null
+    const firstUser = messages.find(
+      (m) => m.type === "user_message",
+    ) as Extract<StoredChatItem, { type: "user_message" }> | undefined
+    if (firstUser) {
+      autoName =
+        firstUser.content.slice(0, 40) +
+        (firstUser.content.length > 40 ? "..." : "")
     }
-  },
 
-  saveMessages(workspaceId: string, sessionId: string, messages: StoredChatItem[]): void {
-    fs.mkdirSync(sessionDir(workspaceId, sessionId), { recursive: true });
-    fs.writeFileSync(messagesPath(workspaceId, sessionId), JSON.stringify(messages, null, 2));
+    const stmts: Array<{ sql: string; args: InValue[] }> = [
+      {
+        sql: "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
+        args: [sessionId, workspaceId],
+      },
+    ]
 
-    // bump updatedAt in index
-    const sessions: Session[] = this.list(workspaceId);
-    const s = sessions.find((x: Session) => x.id === sessionId);
-    if (s) {
-      s.updatedAt = Date.now();
-      // auto-name from first user message
-      const firstUser = messages.find((m) => m.type === 'user_message') as { type: 'user_message'; content: string } | undefined;
-      if (s.name === 'Phiên mới' && firstUser) {
-        s.name = firstUser.content.slice(0, 40) + (firstUser.content.length > 40 ? '...' : '');
+    for (let i = 0; i < messages.length; i++) {
+      const item = messages[i]
+      if (item.type === "user_message") {
+        stmts.push({
+          sql: "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
+          args: [sessionId, workspaceId, i, "user_message", item.content],
+        })
+      } else if (item.type === "assistant_message") {
+        stmts.push({
+          sql: "INSERT INTO messages (session_id, workspace_id, position, type, content, thinking) VALUES (?, ?, ?, ?, ?, ?)",
+          args: [
+            sessionId,
+            workspaceId,
+            i,
+            "assistant_message",
+            item.content,
+            item.thinking ?? null,
+          ],
+        })
+      } else if (item.type === "tool_call") {
+        stmts.push({
+          sql: "INSERT INTO messages (session_id, workspace_id, position, type, tool_name, label, args, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          args: [
+            sessionId,
+            workspaceId,
+            i,
+            "tool_call",
+            item.toolName,
+            item.label,
+            JSON.stringify(item.args),
+            item.result,
+          ],
+        })
       }
-      fs.writeFileSync(indexPath(workspaceId), JSON.stringify(sessions, null, 2));
     }
+
+    // Check current session name to conditionally auto-rename
+    const sessionRes = await db.execute({
+      sql: "SELECT name FROM sessions WHERE id = ?",
+      args: [sessionId],
+    })
+    const currentName =
+      sessionRes.rows.length > 0
+        ? ((sessionRes.rows[0] as Record<string, unknown>).name as string | null)
+        : null
+    const newName =
+      autoName && currentName === "Phiên mới" ? autoName : (currentName ?? "Phiên mới")
+
+    stmts.push({
+      sql: "UPDATE sessions SET updated_at = ?, name = ? WHERE id = ?",
+      args: [Date.now(), newName, sessionId],
+    })
+
+    await db.batch(stmts, "write")
   },
-};
+}

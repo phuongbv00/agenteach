@@ -1,72 +1,76 @@
-import fs from 'fs';
-import path from 'path';
-import { dataDir } from '../utils/dataDir';
-import { generateId } from '../utils/generateId';
+import path from "path"
+import { getDb } from "../db"
+import { generateId } from "../utils/generateId"
 
 export interface Workspace {
-  id: string;
-  name: string;
-  path: string;
-  createdAt: number;
-  lastOpenedAt: number;
+  id: string
+  name: string
+  path: string
+  createdAt: number
+  lastOpenedAt: number
 }
 
-const workspacesPath = () => dataDir('workspaces', 'index.json');
-
-function loadAll(): Workspace[] {
-  try {
-    return JSON.parse(fs.readFileSync(workspacesPath(), 'utf-8')) as Workspace[];
-  } catch {
-    return [];
+function rowToWorkspace(row: Record<string, unknown>): Workspace {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    path: row.path as string,
+    createdAt: row.created_at as number,
+    lastOpenedAt: row.last_opened_at as number,
   }
 }
 
-function saveAll(workspaces: Workspace[]): void {
-  const p = workspacesPath();
-  fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(workspaces, null, 2), 'utf-8');
-}
-
 export const WorkspaceManager = {
-  list(): Workspace[] {
-    return loadAll();
+  async list(): Promise<Workspace[]> {
+    const db = getDb()
+    const res = await db.execute(
+      "SELECT * FROM workspaces ORDER BY last_opened_at DESC",
+    )
+    return res.rows.map((r) => rowToWorkspace(r as Record<string, unknown>))
   },
 
-  create(name: string, folderPath: string): Workspace {
-    const workspaces = loadAll();
+  async create(name: string, folderPath: string): Promise<Workspace> {
+    const db = getDb()
     const ws: Workspace = {
-      id: 'WS-' + generateId(),
+      id: "WS-" + generateId(),
       name,
       path: folderPath,
       createdAt: Date.now(),
       lastOpenedAt: Date.now(),
-    };
-    workspaces.push(ws);
-    saveAll(workspaces);
-    return ws;
-  },
-
-  get(id: string): Workspace | null {
-    return loadAll().find((w) => w.id === id) ?? null;
-  },
-
-  touch(id: string): void {
-    const workspaces = loadAll();
-    const ws = workspaces.find((w) => w.id === id);
-    if (ws) {
-      ws.lastOpenedAt = Date.now();
-      saveAll(workspaces);
     }
+    await db.execute({
+      sql: "INSERT INTO workspaces (id, name, path, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?)",
+      args: [ws.id, ws.name, ws.path, ws.createdAt, ws.lastOpenedAt],
+    })
+    return ws
   },
 
-  delete(id: string): void {
-    const workspaces = loadAll().filter((w) => w.id !== id);
-    saveAll(workspaces);
+  async get(id: string): Promise<Workspace | null> {
+    const db = getDb()
+    const res = await db.execute({
+      sql: "SELECT * FROM workspaces WHERE id = ?",
+      args: [id],
+    })
+    if (!res.rows.length) return null
+    return rowToWorkspace(res.rows[0] as Record<string, unknown>)
+  },
+
+  async touch(id: string): Promise<void> {
+    const db = getDb()
+    await db.execute({
+      sql: "UPDATE workspaces SET last_opened_at = ? WHERE id = ?",
+      args: [Date.now(), id],
+    })
+  },
+
+  async delete(id: string): Promise<void> {
+    const db = getDb()
+    await db.execute({ sql: "DELETE FROM workspaces WHERE id = ?", args: [id] })
   },
 
   isPathInWorkspace(filePath: string, workspace: Workspace): boolean {
-    const normalized = path.resolve(filePath);
-    const wsPath = path.resolve(workspace.path);
-    return normalized.startsWith(wsPath + path.sep) || normalized === wsPath;
+    const normalized = path.resolve(filePath)
+    const wsPath = path.resolve(workspace.path)
+    return normalized.startsWith(wsPath + path.sep) || normalized === wsPath
   },
-};
+}

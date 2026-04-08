@@ -38,7 +38,7 @@ export async function runAgent(
 
   const config = appConfig.get();
   const workspaceId = config.activeWorkspaceId;
-  const workspace = workspaceId ? WorkspaceManager.get(workspaceId) : null;
+  const workspace = workspaceId ? await WorkspaceManager.get(workspaceId) : null;
 
   if (!workspace) {
     win.webContents.send(

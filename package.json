@@ -50,6 +50,7 @@
     "@ai-sdk/openai": "^3.0.50",
     "@ai-sdk/openai-compatible": "^2.0.38",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@libsql/client": "^0.17.2",
     "@opendocsg/pdf2md": "^0.2.6",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",

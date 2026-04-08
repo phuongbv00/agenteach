@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import started from 'electron-squirrel-startup';
 import { updateElectronApp } from 'update-electron-app';
 import { registerHandlers } from './main/ipc/handlers';
+import { initDb } from './main/db';
 
 if (started) app.quit();
 
@@ -65,6 +66,7 @@ const createWindow = () => {
 };
 
 app.on('ready', async () => {
+  await initDb();
   await tryStartOllama();
   createWindow();
 });

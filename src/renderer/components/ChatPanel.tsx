@@ -40,7 +40,7 @@ export default function ChatPanel() {
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [models, setModels] = useState<string[]>([]);
-  const [fileProgress, setFileProgress] = useState<{
+  const [, setFileProgress] = useState<{
     fileName: string;
     stage: "reading" | "parsing";
   } | null>(null);
