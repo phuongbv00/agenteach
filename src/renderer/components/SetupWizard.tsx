@@ -1,5 +1,12 @@
 import { useState, Fragment } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Folder, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Folder,
+  X,
+} from "lucide-react";
 import type { AIProvider } from "../types/api";
 import iconUrl from "../assets/icon.jpeg";
 import { Button } from "@/renderer/components/ui/button";
@@ -68,7 +75,8 @@ export default function SetupWizard({ onComplete }: Props) {
   const [wsCreating, setWsCreating] = useState(false);
 
   // ── Helpers ─────────────────────────────────────────────────
-  const activePreset = PRESETS.find((p) => p.id === selectedPresetId) ?? PRESETS[0];
+  const activePreset =
+    PRESETS.find((p) => p.id === selectedPresetId) ?? PRESETS[0];
   const effectiveUrl =
     selectedPresetId === PRESETS[0].id
       ? activePreset.baseUrl
@@ -117,13 +125,15 @@ export default function SetupWizard({ onComplete }: Props) {
       setupComplete: false,
     });
     await window.api.updateMemory(
-      `## PROFILE\n- Tên: ${teacherName.trim()}\n- Môn dạy: ${subject.trim()}\n\n## PREFERENCES\n\n## BRIEF HISTORY\n`
+      `## PROFILE\n- Tên: ${teacherName.trim()}\n- Môn dạy: ${subject.trim()}\n\n## PREFERENCES\n\n## BRIEF HISTORY\n`,
     );
     setStep("workspace");
   };
 
   const handlePickFolder = async () => {
-    const ws = await window.api.createWorkspace(wsName.trim() || "My Workspace");
+    const ws = await window.api.createWorkspace(
+      wsName.trim() || "My Workspace",
+    );
     if (ws) {
       setWsPath(ws.path);
       if (!wsName.trim()) setWsName(ws.name);
@@ -148,7 +158,11 @@ export default function SetupWizard({ onComplete }: Props) {
       <div className="bg-card text-card-foreground shadow-lg p-8 w-full max-w-lg max-h-[90dvh] rounded-2xl flex flex-col">
         {/* Header */}
         <div className="text-center mb-6">
-          <img src={iconUrl} alt="Agenteach" className="w-24 h-24 mx-auto mb-2 rounded-xl" />
+          <img
+            src={iconUrl}
+            alt="Agenteach"
+            className="w-24 h-24 mx-auto mb-2 rounded-xl"
+          />
           <h1 className="text-2xl font-bold text-foreground">Agenteach</h1>
         </div>
 
@@ -158,21 +172,26 @@ export default function SetupWizard({ onComplete }: Props) {
             <Fragment key={i}>
               <div className="flex flex-col justify-center items-center flex-1">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${i < currentIdx
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                    i < currentIdx
                       ? "bg-primary text-primary-foreground"
                       : i === currentIdx
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground/60"
-                    }`}
+                  }`}
                 >
                   {i < currentIdx ? <Check size={14} /> : i + 1}
                 </div>
-                <span className={`text-xs mt-1 ${i === currentIdx ? "text-primary font-medium" : "text-muted-foreground/60"}`}>
+                <span
+                  className={`text-xs mt-1 ${i === currentIdx ? "text-primary font-medium" : "text-muted-foreground/60"}`}
+                >
                   {STEP_LABELS[s]}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`} />
+                <div
+                  className={`flex-1 h-0.5 mx-2 mb-4 ${i < currentIdx ? "bg-primary" : "bg-border"}`}
+                />
               )}
             </Fragment>
           ))}
@@ -183,9 +202,12 @@ export default function SetupWizard({ onComplete }: Props) {
           {step === "ai-provider" && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Kết nối AI</h2>
+                <h2 className="text-base font-semibold text-foreground mb-1">
+                  Kết nối AI
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không rời khỏi mạng của bạn.
+                  Kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không
+                  rời khỏi mạng của bạn.
                 </p>
               </div>
 
@@ -193,21 +215,35 @@ export default function SetupWizard({ onComplete }: Props) {
                 {PRESETS.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => { setSelectedPresetId(p.id); setConnectionOk(null); setCustomUrl(""); }}
-                    className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${selectedPresetId === p.id
+                    onClick={() => {
+                      setSelectedPresetId(p.id);
+                      setConnectionOk(null);
+                      setCustomUrl("");
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${
+                      selectedPresetId === p.id
                         ? "border-primary bg-primary/5"
                         : "hover:bg-muted/30 border-border"
-                      }`}
+                    }`}
                   >
                     <div
-                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedPresetId === p.id ? "border-primary" : "border-border"
-                        }`}
+                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        selectedPresetId === p.id
+                          ? "border-primary"
+                          : "border-border"
+                      }`}
                     >
-                      {selectedPresetId === p.id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                      {selectedPresetId === p.id && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{p.label}</p>
-                      <p className="text-xs text-muted-foreground/60">{p.sublabel}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {p.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">
+                        {p.sublabel}
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -218,13 +254,17 @@ export default function SetupWizard({ onComplete }: Props) {
                   <Input
                     autoFocus
                     value={customUrl}
-                    onChange={(e) => { setCustomUrl(e.target.value); setConnectionOk(null); }}
+                    onChange={(e) => {
+                      setCustomUrl(e.target.value);
+                      setConnectionOk(null);
+                    }}
                     onKeyDown={(e) => e.key === "Enter" && handleConnect()}
                     placeholder={
                       "Địa chỉ (" +
                       (selectedPresetId === "ollama-remote"
                         ? "http://192.168.1.10:11434/v1"
-                        : activePreset.baseUrl || "https://api.example.com/v1") +
+                        : activePreset.baseUrl ||
+                          "https://api.example.com/v1") +
                       ")"
                     }
                     className="font-mono"
@@ -244,10 +284,15 @@ export default function SetupWizard({ onComplete }: Props) {
                 <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
                   <p className="font-medium">Không kết nối được. Kiểm tra:</p>
                   <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                    {(selectedPresetId === "ollama-local" || selectedPresetId === "ollama-remote") && (
-                      <li>Ollama đã bật chưa? (chạy <code>ollama serve</code>)</li>
+                    {(selectedPresetId === "ollama-local" ||
+                      selectedPresetId === "ollama-remote") && (
+                      <li>
+                        Ollama đã bật chưa? (chạy <code>ollama serve</code>)
+                      </li>
                     )}
-                    {selectedPresetId !== PRESETS[0].id && <li>Địa chỉ URL có đúng không?</li>}
+                    {selectedPresetId !== PRESETS[0].id && (
+                      <li>Địa chỉ URL có đúng không?</li>
+                    )}
                     {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
                     <li>Nhờ bộ phận IT hỗ trợ nếu cần</li>
                   </ul>
@@ -258,7 +303,10 @@ export default function SetupWizard({ onComplete }: Props) {
                 <Button
                   className="w-full rounded-xl"
                   onClick={handleConnect}
-                  disabled={checking || (selectedPresetId !== PRESETS[0].id && !customUrl.trim())}
+                  disabled={
+                    checking ||
+                    (selectedPresetId !== PRESETS[0].id && !customUrl.trim())
+                  }
                 >
                   {checking ? "Đang kiểm tra..." : "Kết nối"}
                 </Button>
@@ -272,16 +320,24 @@ export default function SetupWizard({ onComplete }: Props) {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-2">Chọn model AI</h3>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <h3 className="text-sm font-semibold text-foreground mb-2">
+                      Chọn model AI
+                    </h3>
+                    <div className="space-y-2">
                       {models.length === 0 ? (
                         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-2">
-                          <p className="font-medium">Chưa có model nào được cài đặt.</p>
+                          <p className="font-medium">
+                            Chưa có model nào được cài đặt.
+                          </p>
                           <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                            <li>Liên hệ bộ phận IT để được cài model phù hợp</li>
+                            <li>
+                              Liên hệ bộ phận IT để được cài model phù hợp
+                            </li>
                             <li>
                               Hoặc tự tải qua terminal:{" "}
-                              <code className="bg-orange-100 px-1 rounded font-mono">ollama pull &lt;model&gt;</code>
+                              <code className="bg-orange-100 px-1 rounded font-mono">
+                                ollama pull &lt;model&gt;
+                              </code>
                             </li>
                           </ul>
                         </div>
@@ -289,8 +345,11 @@ export default function SetupWizard({ onComplete }: Props) {
                         models.map((m) => (
                           <label
                             key={m}
-                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/30"
-                              }`}
+                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
+                              selectedModel === m
+                                ? "border-primary bg-primary/5"
+                                : "hover:bg-muted/30"
+                            }`}
                           >
                             <input
                               type="radio"
@@ -300,7 +359,9 @@ export default function SetupWizard({ onComplete }: Props) {
                               onChange={() => setSelectedModel(m)}
                               className="accent-primary"
                             />
-                            <span className="text-sm font-mono text-foreground">{m}</span>
+                            <span className="text-sm font-mono text-foreground">
+                              {m}
+                            </span>
                           </label>
                         ))
                       )}
@@ -323,9 +384,12 @@ export default function SetupWizard({ onComplete }: Props) {
           {step === "profile" && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Cho trợ lý biết về bạn</h2>
+                <h2 className="text-base font-semibold text-foreground mb-1">
+                  Cho trợ lý biết về bạn
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời. Có thể thay đổi sau.
+                  Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả
+                  lời. Có thể thay đổi sau.
                 </p>
               </div>
 
@@ -342,18 +406,26 @@ export default function SetupWizard({ onComplete }: Props) {
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-foreground mb-1.5 block">Môn dạy</Label>
+                  <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                    Môn dạy
+                  </Label>
                   <Input
                     placeholder="VD: Toán, Ngữ văn, Lịch sử..."
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground/60 mt-1">Không bắt buộc — có thể điền sau</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    Không bắt buộc — có thể điền sau
+                  </p>
                 </div>
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={goBack}
+                >
                   <ArrowLeft size={14} /> Quay lại
                 </Button>
                 <Button
@@ -371,15 +443,20 @@ export default function SetupWizard({ onComplete }: Props) {
           {step === "workspace" && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Chọn thư mục làm việc</h2>
+                <h2 className="text-base font-semibold text-foreground mb-1">
+                  Chọn thư mục làm việc
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý sẽ tìm và đọc file trong thư mục này.
+                  Workspace là thư mục chứa tài liệu giảng dạy của bạn. Trợ lý
+                  sẽ tìm và đọc file trong thư mục này.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <div>
-                  <Label className="text-sm font-medium text-foreground mb-1.5 block">Tên workspace</Label>
+                  <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                    Tên workspace
+                  </Label>
                   <Input
                     autoFocus
                     placeholder="VD: Tài liệu Toán 10"
@@ -391,7 +468,9 @@ export default function SetupWizard({ onComplete }: Props) {
                 {wsPath ? (
                   <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
                     <Folder size={14} className="text-primary flex-shrink-0" />
-                    <span className="text-sm text-primary font-mono truncate flex-1">{wsPath}</span>
+                    <span className="text-sm text-primary font-mono truncate flex-1">
+                      {wsPath}
+                    </span>
                     <Button
                       variant="ghost"
                       size="icon-xs"
@@ -412,7 +491,11 @@ export default function SetupWizard({ onComplete }: Props) {
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={goBack}
+                >
                   <ArrowLeft size={14} /> Quay lại
                 </Button>
                 <Button
@@ -420,11 +503,15 @@ export default function SetupWizard({ onComplete }: Props) {
                   onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
                   disabled={wsCreating}
                 >
-                  {wsCreating
-                    ? "Đang tạo..."
-                    : wsPath
-                      ? <span className="flex items-center justify-center gap-1">Bắt đầu sử dụng <Check size={14} /></span>
-                      : "Chọn thư mục..."}
+                  {wsCreating ? (
+                    "Đang tạo..."
+                  ) : wsPath ? (
+                    <span className="flex items-center justify-center gap-1">
+                      Bắt đầu sử dụng <Check size={14} />
+                    </span>
+                  ) : (
+                    "Chọn thư mục..."
+                  )}
                 </Button>
               </div>
 

@@ -1,7 +1,6 @@
 import fs from "fs";
 import { MemoryStore } from "../memory/MemoryStore";
 import type { Workspace } from "../workspace/WorkspaceManager";
-import type { Plugin } from "../plugins/PluginLoader";
 
 import identityTpl from "./prompts/identity.md?raw";
 import workspaceTpl from "./prompts/workspace.md?raw";
@@ -13,13 +12,7 @@ function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
 }
 
-
-
-export function buildSystemPrompt(
-  memory: string,
-  workspace: Workspace,
-  activePlugin: Plugin | null = null,
-): string {
+export function buildSystemPrompt(_memory: string, workspace: Workspace): string {
   const parts: string[] = [];
 
   parts.push(
@@ -51,10 +44,6 @@ export function buildSystemPrompt(
       WORKSPACE_PATH: workspace.path,
     }),
   );
-
-  if (activePlugin && activePlugin.type === "skill") {
-    parts.push(`[ACTIVE SKILL: ${activePlugin.name}]\n${activePlugin.prompt}`);
-  }
 
   parts.push(toolsTpl);
   parts.push(memoryUpdateTpl);
