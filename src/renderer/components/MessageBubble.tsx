@@ -202,11 +202,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 interface StreamingBubbleProps {
   content: string;
   reasoning?: string;
+  isStreaming?: boolean;
 }
 
 export function StreamingBubble({
   content,
   reasoning,
+  isStreaming = true,
 }: StreamingBubbleProps) {
   const parsed = parseThinking(content);
   const thinkingText = reasoning || parsed.thinking;
@@ -236,6 +238,22 @@ export function StreamingBubble({
           >
             {parsed.text}
           </ReactMarkdown>
+          {isStreaming && (
+            <div className="flex gap-0.5 mt-2">
+              <span
+                className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+                style={{ animationDelay: "0ms" }}
+              />
+              <span
+                className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
+            </div>
+          )}
         </div>
       ) : !hasThinking ? (
         <div className="flex items-center gap-2 text-xs text-gray-400 py-1">
