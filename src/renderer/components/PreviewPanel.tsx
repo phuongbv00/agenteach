@@ -1,10 +1,6 @@
 import { Button } from "@/renderer/components/ui/button";
 import "katex/dist/katex.min.css";
-import {
-  ExternalLink,
-  FolderOpen,
-  X
-} from "lucide-react";
+import { ExternalLink, FolderOpen, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -24,7 +20,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
   const [mdContent, setMdContent] = useState("");
   const [blobUrl, setBlobUrl] = useState("");
   const prevBlobUrl = useRef("");
-  const [width, setWidth] = useState(440);
+  const [width, setWidth] = useState(500);
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
@@ -148,12 +144,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
           >
             <ExternalLink size={14} />
           </Button>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="icon"
-            title="Đóng"
-          >
+          <Button onClick={onClose} variant="ghost" size="icon" title="Đóng">
             <X size={14} />
           </Button>
         </div>
