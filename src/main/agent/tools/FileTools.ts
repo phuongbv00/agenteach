@@ -228,10 +228,7 @@ const PDF_CSS = `
   p { margin: 8px 0; }
 `;
 
-async function buildPdfBuffer(
-  content: string,
-  win: BrowserWindow,
-): Promise<Buffer> {
+async function buildPdfBuffer(content: string): Promise<Buffer> {
   const html = marked.parse(content) as string;
   const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PDF_CSS}</style></head><body>${html}</body></html>`;
 
@@ -564,7 +561,7 @@ export function createFileTools(
             fileName: input.file_name,
             stage: "parsing",
           });
-          const buf = await buildPdfBuffer(input.content, win);
+          const buf = await buildPdfBuffer(input.content);
           fs.writeFileSync(resolved, buf);
           await trackAndPreview(resolved, "pdf");
           return `Đã tạo file PDF: ${resolved}`;
