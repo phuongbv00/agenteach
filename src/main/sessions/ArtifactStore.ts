@@ -25,11 +25,12 @@ function rowToArtifact(row: Record<string, unknown>): Artifact {
 export const ArtifactStore = {
   async list(workspaceId: string, sessionId: string): Promise<Artifact[]> {
     const db = getDb()
-    const res = await db.execute({
-      sql: "SELECT * FROM artifacts WHERE workspace_id = ? AND session_id = ? ORDER BY created_at DESC",
-      args: [workspaceId, sessionId],
-    })
-    return res.rows.map((r) => rowToArtifact(r as Record<string, unknown>))
+    const rows = db
+      .prepare(
+        "SELECT * FROM artifacts WHERE workspace_id = ? AND session_id = ? ORDER BY created_at DESC",
+      )
+      .all(workspaceId, sessionId) as Record<string, unknown>[]
+    return rows.map(rowToArtifact)
   },
 
   async add(artifact: Omit<Artifact, "id" | "createdAt">): Promise<Artifact> {
@@ -39,18 +40,17 @@ export const ArtifactStore = {
       id: Date.now().toString(),
       createdAt: Date.now(),
     }
-    await db.execute({
-      sql: "INSERT INTO artifacts (id, session_id, workspace_id, file_path, file_name, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      args: [
-        newArtifact.id,
-        newArtifact.sessionId,
-        newArtifact.workspaceId,
-        newArtifact.filePath,
-        newArtifact.fileName,
-        newArtifact.type,
-        newArtifact.createdAt,
-      ],
-    })
+    db.prepare(
+      "INSERT INTO artifacts (id, session_id, workspace_id, file_path, file_name, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      newArtifact.id,
+      newArtifact.sessionId,
+      newArtifact.workspaceId,
+      newArtifact.filePath,
+      newArtifact.fileName,
+      newArtifact.type,
+      newArtifact.createdAt,
+    )
     return newArtifact
   },
 
@@ -60,9 +60,8 @@ export const ArtifactStore = {
     artifactId: string,
   ): Promise<void> {
     const db = getDb()
-    await db.execute({
-      sql: "DELETE FROM artifacts WHERE id = ? AND workspace_id = ? AND session_id = ?",
-      args: [artifactId, workspaceId, sessionId],
-    })
+    db.prepare(
+      "DELETE FROM artifacts WHERE id = ? AND workspace_id = ? AND session_id = ?",
+    ).run(artifactId, workspaceId, sessionId)
   },
 }

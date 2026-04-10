@@ -13,7 +13,7 @@ const config: ForgeConfig = {
     name: "Agenteach",
     executableName: "Agenteach",
     appBundleId: "com.agenteach.app",
-    asar: { unpack: "**/*.node" },
+    asar: true,
     icon: "assets/icon",
   },
   rebuildConfig: {},

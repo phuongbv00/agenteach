@@ -1,7 +1,7 @@
 {
   "name": "agenteach",
   "productName": "Agenteach",
-  "version": "0.0.2",
+  "version": "1.0.0-alpha",
   "description": "Trợ lý AI cá nhân dành cho giáo viên",
   "main": ".vite/build/main.js",
   "private": true,
@@ -13,7 +13,8 @@
     "make:win": "electron-forge make --platform win32",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "typecheck": "NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit"
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit",
+    "rebuild": "electron-rebuild"
   },
   "keywords": [],
   "author": "phuongbv",
@@ -30,6 +31,7 @@
     "@electron-forge/plugin-vite": "^7.11.1",
     "@electron-forge/publisher-github": "^7.11.1",
     "@electron/fuses": "^1.8.0",
+    "@electron/rebuild": "^4.0.3",
     "@tailwindcss/typography": "^0.5.19",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react": "^18.3.28",
@@ -50,7 +52,6 @@
     "@ai-sdk/openai": "^3.0.50",
     "@ai-sdk/openai-compatible": "^2.0.38",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
-    "@libsql/client": "^0.17.2",
     "@opendocsg/pdf2md": "^0.2.6",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",

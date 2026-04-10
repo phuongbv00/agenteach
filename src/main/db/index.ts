@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { createClient, type Client } from "@libsql/client"
+import { DatabaseSync } from "node:sqlite"
 import fs from "fs"
 import path from "path"
 import { dataDir } from "../utils/dataDir"
@@ -11,13 +11,13 @@ const SQL_FILES = import.meta.glob<string>("./migrations/*.sql", {
   import: "default",
 })
 
-let _db: Client | null = null
+let _db: DatabaseSync | null = null
 
-export function getDb(): Client {
+export function getDb(): DatabaseSync {
   if (!_db) {
     const dbPath = dataDir("db.sqlite")
     fs.mkdirSync(path.dirname(dbPath), { recursive: true })
-    _db = createClient({ url: `file:${dbPath}` })
+    _db = new DatabaseSync(dbPath)
   }
   return _db
 }
@@ -25,29 +25,34 @@ export function getDb(): Client {
 export async function initDb(): Promise<void> {
   const db = getDb()
 
-  await db.execute(
+  db.exec(
     `CREATE TABLE IF NOT EXISTS migrations (
       key TEXT PRIMARY KEY,
       done_at INTEGER NOT NULL
     )`,
   )
 
-  const applied = await db.execute("SELECT key FROM migrations")
-  const appliedKeys = new Set(applied.rows.map((r) => r.key as string))
+  const applied = db.prepare("SELECT key FROM migrations").all() as Array<{
+    key: string
+  }>
+  const appliedKeys = new Set(applied.map((r) => r.key))
 
   for (const filePath of Object.keys(SQL_FILES).sort()) {
     const key = path.basename(filePath, ".sql")
     if (appliedKeys.has(key)) continue
 
     const sql = SQL_FILES[filePath]
-    // libsql doesn't support multi-statement strings — split on ";"
-    for (const stmt of sql.split(";").map((s: string) => s.trim()).filter(Boolean)) {
-      await db.execute(stmt)
+    // node:sqlite doesn't support multi-statement strings — split on ";"
+    for (const stmt of sql
+      .split(";")
+      .map((s: string) => s.trim())
+      .filter(Boolean)) {
+      db.exec(stmt)
     }
 
-    await db.execute({
-      sql: "INSERT INTO migrations (key, done_at) VALUES (?, ?)",
-      args: [key, Date.now()],
-    })
+    db.prepare("INSERT INTO migrations (key, done_at) VALUES (?, ?)").run(
+      key,
+      Date.now(),
+    )
   }
 }

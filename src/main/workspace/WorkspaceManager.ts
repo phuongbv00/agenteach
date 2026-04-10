@@ -23,10 +23,10 @@ function rowToWorkspace(row: Record<string, unknown>): Workspace {
 export const WorkspaceManager = {
   async list(): Promise<Workspace[]> {
     const db = getDb()
-    const res = await db.execute(
-      "SELECT * FROM workspaces ORDER BY last_opened_at DESC",
-    )
-    return res.rows.map((r) => rowToWorkspace(r as Record<string, unknown>))
+    const rows = db
+      .prepare("SELECT * FROM workspaces ORDER BY last_opened_at DESC")
+      .all() as Record<string, unknown>[]
+    return rows.map(rowToWorkspace)
   },
 
   async create(name: string, folderPath: string): Promise<Workspace> {
@@ -38,34 +38,31 @@ export const WorkspaceManager = {
       createdAt: Date.now(),
       lastOpenedAt: Date.now(),
     }
-    await db.execute({
-      sql: "INSERT INTO workspaces (id, name, path, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?)",
-      args: [ws.id, ws.name, ws.path, ws.createdAt, ws.lastOpenedAt],
-    })
+    db.prepare(
+      "INSERT INTO workspaces (id, name, path, created_at, last_opened_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(ws.id, ws.name, ws.path, ws.createdAt, ws.lastOpenedAt)
     return ws
   },
 
   async get(id: string): Promise<Workspace | null> {
     const db = getDb()
-    const res = await db.execute({
-      sql: "SELECT * FROM workspaces WHERE id = ?",
-      args: [id],
-    })
-    if (!res.rows.length) return null
-    return rowToWorkspace(res.rows[0] as Record<string, unknown>)
+    const rows = db
+      .prepare("SELECT * FROM workspaces WHERE id = ?")
+      .all(id) as Record<string, unknown>[]
+    if (!rows.length) return null
+    return rowToWorkspace(rows[0])
   },
 
   async touch(id: string): Promise<void> {
     const db = getDb()
-    await db.execute({
-      sql: "UPDATE workspaces SET last_opened_at = ? WHERE id = ?",
-      args: [Date.now(), id],
-    })
+    db.prepare(
+      "UPDATE workspaces SET last_opened_at = ? WHERE id = ?",
+    ).run(Date.now(), id)
   },
 
   async delete(id: string): Promise<void> {
     const db = getDb()
-    await db.execute({ sql: "DELETE FROM workspaces WHERE id = ?", args: [id] })
+    db.prepare("DELETE FROM workspaces WHERE id = ?").run(id)
   },
 
   isPathInWorkspace(filePath: string, workspace: Workspace): boolean {

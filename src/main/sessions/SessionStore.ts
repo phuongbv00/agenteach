@@ -1,4 +1,3 @@
-import type { InValue } from "@libsql/client"
 import { getDb } from "../db"
 import { generateId } from "../utils/generateId"
 
@@ -55,11 +54,12 @@ function rowToItem(row: Record<string, unknown>): StoredChatItem {
 export const SessionStore = {
   async list(workspaceId: string): Promise<Session[]> {
     const db = getDb()
-    const res = await db.execute({
-      sql: "SELECT * FROM sessions WHERE workspace_id = ? ORDER BY updated_at DESC",
-      args: [workspaceId],
-    })
-    return res.rows.map((r) => rowToSession(r as Record<string, unknown>))
+    const rows = db
+      .prepare(
+        "SELECT * FROM sessions WHERE workspace_id = ? ORDER BY updated_at DESC",
+      )
+      .all(workspaceId) as Record<string, unknown>[]
+    return rows.map(rowToSession)
   },
 
   async create(workspaceId: string, name = "Phiên mới"): Promise<Session> {
@@ -71,16 +71,15 @@ export const SessionStore = {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
-    await db.execute({
-      sql: "INSERT INTO sessions (id, workspace_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-      args: [
-        session.id,
-        session.workspaceId,
-        session.name,
-        session.createdAt,
-        session.updatedAt,
-      ],
-    })
+    db.prepare(
+      "INSERT INTO sessions (id, workspace_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(
+      session.id,
+      session.workspaceId,
+      session.name,
+      session.createdAt,
+      session.updatedAt,
+    )
     return session
   },
 
@@ -90,31 +89,29 @@ export const SessionStore = {
     name: string,
   ): Promise<void> {
     const db = getDb()
-    await db.execute({
-      sql: "UPDATE sessions SET name = ?, updated_at = ? WHERE id = ? AND workspace_id = ?",
-      args: [name, Date.now(), sessionId, workspaceId],
-    })
+    db.prepare(
+      "UPDATE sessions SET name = ?, updated_at = ? WHERE id = ? AND workspace_id = ?",
+    ).run(name, Date.now(), sessionId, workspaceId)
   },
 
   async delete(workspaceId: string, sessionId: string): Promise<void> {
     const db = getDb()
-    await db.batch(
-      [
-        {
-          sql: "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
-          args: [sessionId, workspaceId],
-        },
-        {
-          sql: "DELETE FROM artifacts WHERE session_id = ? AND workspace_id = ?",
-          args: [sessionId, workspaceId],
-        },
-        {
-          sql: "DELETE FROM sessions WHERE id = ? AND workspace_id = ?",
-          args: [sessionId, workspaceId],
-        },
-      ],
-      "write",
-    )
+    db.exec("BEGIN")
+    try {
+      db.prepare(
+        "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
+      ).run(sessionId, workspaceId)
+      db.prepare(
+        "DELETE FROM artifacts WHERE session_id = ? AND workspace_id = ?",
+      ).run(sessionId, workspaceId)
+      db.prepare(
+        "DELETE FROM sessions WHERE id = ? AND workspace_id = ?",
+      ).run(sessionId, workspaceId)
+      db.exec("COMMIT")
+    } catch (e) {
+      db.exec("ROLLBACK")
+      throw e
+    }
   },
 
   async loadMessages(
@@ -122,11 +119,12 @@ export const SessionStore = {
     sessionId: string,
   ): Promise<StoredChatItem[]> {
     const db = getDb()
-    const res = await db.execute({
-      sql: "SELECT * FROM messages WHERE session_id = ? AND workspace_id = ? ORDER BY position ASC",
-      args: [sessionId, workspaceId],
-    })
-    return res.rows.map((r) => rowToItem(r as Record<string, unknown>))
+    const rows = db
+      .prepare(
+        "SELECT * FROM messages WHERE session_id = ? AND workspace_id = ? ORDER BY position ASC",
+      )
+      .all(sessionId, workspaceId) as Record<string, unknown>[]
+    return rows.map(rowToItem)
   },
 
   async saveMessages(
@@ -147,36 +145,46 @@ export const SessionStore = {
         (firstUser.content.length > 40 ? "..." : "")
     }
 
-    const stmts: Array<{ sql: string; args: InValue[] }> = [
-      {
-        sql: "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
-        args: [sessionId, workspaceId],
-      },
-    ]
+    // Check current session name to conditionally auto-rename
+    const sessionRows = db
+      .prepare("SELECT name FROM sessions WHERE id = ?")
+      .all(sessionId) as Record<string, unknown>[]
+    const currentName =
+      sessionRows.length > 0
+        ? (sessionRows[0].name as string | null)
+        : null
+    const newName =
+      autoName && currentName === "Phiên mới"
+        ? autoName
+        : (currentName ?? "Phiên mới")
 
-    for (let i = 0; i < messages.length; i++) {
-      const item = messages[i]
-      if (item.type === "user_message") {
-        stmts.push({
-          sql: "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
-          args: [sessionId, workspaceId, i, "user_message", item.content],
-        })
-      } else if (item.type === "assistant_message") {
-        stmts.push({
-          sql: "INSERT INTO messages (session_id, workspace_id, position, type, content, thinking) VALUES (?, ?, ?, ?, ?, ?)",
-          args: [
+    db.exec("BEGIN")
+    try {
+      db.prepare(
+        "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
+      ).run(sessionId, workspaceId)
+
+      for (let i = 0; i < messages.length; i++) {
+        const item = messages[i]
+        if (item.type === "user_message") {
+          db.prepare(
+            "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
+          ).run(sessionId, workspaceId, i, "user_message", item.content)
+        } else if (item.type === "assistant_message") {
+          db.prepare(
+            "INSERT INTO messages (session_id, workspace_id, position, type, content, thinking) VALUES (?, ?, ?, ?, ?, ?)",
+          ).run(
             sessionId,
             workspaceId,
             i,
             "assistant_message",
             item.content,
             item.thinking ?? null,
-          ],
-        })
-      } else if (item.type === "tool_call") {
-        stmts.push({
-          sql: "INSERT INTO messages (session_id, workspace_id, position, type, tool_name, label, args, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          args: [
+          )
+        } else if (item.type === "tool_call") {
+          db.prepare(
+            "INSERT INTO messages (session_id, workspace_id, position, type, tool_name, label, args, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          ).run(
             sessionId,
             workspaceId,
             i,
@@ -185,28 +193,18 @@ export const SessionStore = {
             item.label,
             JSON.stringify(item.args),
             item.result,
-          ],
-        })
+          )
+        }
       }
+
+      db.prepare(
+        "UPDATE sessions SET updated_at = ?, name = ? WHERE id = ?",
+      ).run(Date.now(), newName, sessionId)
+
+      db.exec("COMMIT")
+    } catch (e) {
+      db.exec("ROLLBACK")
+      throw e
     }
-
-    // Check current session name to conditionally auto-rename
-    const sessionRes = await db.execute({
-      sql: "SELECT name FROM sessions WHERE id = ?",
-      args: [sessionId],
-    })
-    const currentName =
-      sessionRes.rows.length > 0
-        ? ((sessionRes.rows[0] as Record<string, unknown>).name as string | null)
-        : null
-    const newName =
-      autoName && currentName === "Phiên mới" ? autoName : (currentName ?? "Phiên mới")
-
-    stmts.push({
-      sql: "UPDATE sessions SET updated_at = ?, name = ? WHERE id = ?",
-      args: [Date.now(), newName, sessionId],
-    })
-
-    await db.batch(stmts, "write")
   },
 }
