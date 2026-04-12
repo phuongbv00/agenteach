@@ -1,10 +1,10 @@
 ---
 builtin: true
-name: Tạo Quiz
+name: Tạo Bộ Đề Trắc Nghiệm
 description: Tạo bộ câu hỏi trắc nghiệm nhiều lựa chọn từ nội dung bài giảng. Dùng khi giáo viên muốn tạo quiz hoặc bộ câu hỏi trắc nghiệm từ nội dung bài học.
 ---
 
-# Skill: Tạo Quiz
+# Skill: Tạo Bộ Đề Trắc Nghiệm
 
 ## Mục tiêu
 
@@ -32,7 +32,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Số lựa chọn mỗi câu: A/B/C/D (4 lựa chọn) hay A/B/C (3 lựa chọn)
 - Tỉ lệ câu dễ/trung bình/khó (ví dụ: 50/30/20)
 - Có cần giải thích đáp án không
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn quiz với cấu trúc sau
 

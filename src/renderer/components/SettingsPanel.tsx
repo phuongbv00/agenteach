@@ -21,7 +21,6 @@ import {
   Check,
   CheckCircle2,
   Copy,
-  FolderOpen,
   LifeBuoy,
   Pencil,
   Plug,

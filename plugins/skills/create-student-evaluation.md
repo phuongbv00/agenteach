@@ -33,7 +33,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Mức độ chi tiết nhận xét: tóm tắt / chi tiết từng câu / đầy đủ + gợi ý cải thiện
 - Giọng điệu nhận xét: khuyến khích / trung lập / nghiêm túc
 - Tên học sinh hoặc mã bài nếu cần ghi vào báo cáo
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Đánh giá với cấu trúc sau
 

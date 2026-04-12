@@ -35,7 +35,7 @@ Hỏi giáo viên các thông tin còn thiếu:
 - Số học sinh và đặc điểm lớp (nếu có)
 - Phương pháp giảng dạy ưu tiên: thuyết trình, thảo luận nhóm, thực hành, dự án...
 - Có cần tích hợp bài tập / hoạt động trong giờ không
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn bài giảng với cấu trúc sau
 

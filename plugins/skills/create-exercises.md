@@ -32,7 +32,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Cấp độ: cơ bản / nâng cao / hỗn hợp
 - Dạng bài: tính toán, lý thuyết, bài toán thực tế, lập trình, viết...
 - Có cần đáp án kèm theo không
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn bài tập với cấu trúc sau
 

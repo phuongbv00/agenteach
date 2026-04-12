@@ -1,6 +1,6 @@
 ---
 builtin: true
-name: Tạo Bài Kiểm Tra Tự Luận
+name: Tạo Bài Kiểm Tra Tự Luận Ngắn
 description: Soạn đề kiểm tra tự luận ngắn với thang điểm và hướng dẫn chấm. Dùng khi giáo viên muốn soạn đề kiểm tra tự luận ngắn hoặc đề thi cho học sinh.
 ---
 
@@ -33,7 +33,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Số câu hỏi và cơ cấu điểm
 - Trình độ học sinh: đại trà / khá giỏi / ôn thi
 - Có cần đáp án + rubric chấm không (mặc định: có)
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn đề kiểm tra với cấu trúc sau
 

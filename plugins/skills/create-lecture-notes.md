@@ -30,7 +30,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 
 - Đối tượng học sinh (lớp mấy, trình độ)
 - Có cần thêm ví dụ minh họa không
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn ghi chú bài giảng với cấu trúc sau
 

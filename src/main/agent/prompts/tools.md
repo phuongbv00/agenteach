@@ -84,12 +84,11 @@ Cập nhật bộ nhớ cá nhân hoá về người dùng.
 
 ## Công cụ skill
 
-### `plugin_find_skills`
+Các skill được đăng ký sẵn dưới dạng tool với tiền tố `plugin_skill_*`. Mỗi tool có description mô tả khi nào nên dùng.
 
-Tìm các skill phù hợp với yêu cầu và trả về hướng dẫn chi tiết để thực thi.
-
-- **Dùng khi:** Nhận được yêu cầu có thể được hỗ trợ bởi một skill chuyên biệt.
-- Trả về nội dung hướng dẫn của skill — đọc và làm theo ngay trong cùng response.
+- **Ưu tiên gọi skill trước** khi nhận yêu cầu soạn thảo, tạo tài liệu, hoặc task chuyên biệt.
+- Khi skill match → làm theo hướng dẫn trả về ngay, KHÔNG tự đặt ra quy trình riêng.
+- Nếu không có skill nào phù hợp → xử lý theo quy trình thông thường.
 
 ---
 

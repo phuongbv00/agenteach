@@ -31,7 +31,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Mức độ chi tiết: tóm tắt / đầy đủ từng bước / giải thích tư duy
 - Đối tượng đọc: học sinh tự học hay giáo viên tham khảo
 - Có cần lưu ý lỗi sai phổ biến không
-- Định dạng xuất: PDF, DOCX hay Markdown
+- Định dạng xuất: PDF, DOCX hay Markdown (mặc định: Markdown)
 
 ### Bước 4 — Soạn hướng dẫn giải với cấu trúc sau
 
