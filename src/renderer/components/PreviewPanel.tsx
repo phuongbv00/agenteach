@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { PreviewData } from "../types/api";
+import { normalizeMathDelimiters } from "../lib/utils";
 
 interface Props {
   data: PreviewData;
@@ -167,7 +168,7 @@ export default function PreviewPanel({ data, onClose }: Props) {
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[rehypeKatex]}
               >
-                {mdContent}
+                {normalizeMathDelimiters(mdContent)}
               </ReactMarkdown>
             </div>
           )}

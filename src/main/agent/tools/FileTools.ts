@@ -9,8 +9,9 @@ import { BrowserWindow, ipcMain } from "electron";
 import mammoth from "mammoth";
 import pdf2md from "@opendocsg/pdf2md";
 import { NodeHtmlMarkdown } from "node-html-markdown";
-import { marked } from "marked";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { Marked } from "marked";
+import katex from "katex";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun } from "docx";
 import { FileCache } from "../FileCache";
 import { PermissionManager } from "../PermissionManager";
 import { ArtifactStore } from "../../sessions/ArtifactStore";
@@ -54,6 +55,136 @@ export async function requestHitl(
 const nhm = new NodeHtmlMarkdown({ bulletMarker: "-" });
 
 const PARSED_EXTS = new Set([".docx", ".pdf"]);
+
+// ── KaTeX helpers ──────────────────────────────────────────────────────────────
+
+/** Convert \(...\) and \[...\] to $...$ / $$...$$ so remark-math / markedWithMath can parse them. */
+function normalizeMathDelimiters(content: string): string {
+  return content
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_, m: string) => `$$${m}$$`)
+    .replace(/\\\((.+?)\\\)/g, (_, m: string) => `$${m}$`);
+}
+
+let _katexCss: string | null = null;
+function getKatexCss(): string {
+  if (!_katexCss) {
+    const cssPath = path.join(
+      path.dirname(require.resolve("katex")),
+      "../dist/katex.min.css",
+    );
+    _katexCss = fs.readFileSync(cssPath, "utf-8");
+  }
+  return _katexCss;
+}
+
+// marked instance with math block/inline extensions (used for PDF)
+const markedWithMath = new Marked();
+markedWithMath.use({
+  extensions: [
+    {
+      name: "mathBlock",
+      level: "block",
+      start(src: string) {
+        return src.indexOf("$$");
+      },
+      tokenizer(src: string) {
+        const match = src.match(/^\$\$([\s\S]+?)\$\$/);
+        if (match) return { type: "mathBlock", raw: match[0], math: match[1].trim() };
+        return undefined;
+      },
+      renderer(token) {
+        try {
+          return katex.renderToString(token["math"] as string, {
+            displayMode: true,
+            throwOnError: false,
+          });
+        } catch {
+          return `<code>${token["math"]}</code>`;
+        }
+      },
+    },
+    {
+      name: "mathInline",
+      level: "inline",
+      start(src: string) {
+        return src.indexOf("$");
+      },
+      tokenizer(src: string) {
+        const match = src.match(/^\$([^$\n]+?)\$/);
+        if (match) return { type: "mathInline", raw: match[0], math: match[1].trim() };
+        return undefined;
+      },
+      renderer(token) {
+        try {
+          return katex.renderToString(token["math"] as string, {
+            displayMode: false,
+            throwOnError: false,
+          });
+        } catch {
+          return `<code>${token["math"]}</code>`;
+        }
+      },
+    },
+  ],
+});
+
+// Render a list of LaTeX equations to PNG buffers using an offscreen BrowserWindow
+async function batchRenderLatexToPng(
+  equations: Array<{ latex: string; display: boolean }>,
+): Promise<Buffer[]> {
+  if (equations.length === 0) return [];
+
+  const equationHtml = equations
+    .map((eq, i) => {
+      const rendered = katex.renderToString(eq.latex, {
+        displayMode: eq.display,
+        throwOnError: false,
+      });
+      return `<div id="eq-${i}" style="display:inline-block;padding:4px 6px;background:white">${rendered}</div>`;
+    })
+    .join("\n");
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${getKatexCss()}body{margin:0;padding:8px;background:white}</style></head><body>${equationHtml}</body></html>`;
+  const tmpHtml = path.join(os.tmpdir(), `katex-batch-${Date.now()}.html`);
+  fs.writeFileSync(tmpHtml, html, "utf-8");
+
+  const win = new BrowserWindow({
+    show: false,
+    width: 1400,
+    height: 2000,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
+  });
+
+  try {
+    await win.loadURL(`file://${tmpHtml}`);
+    const rects: Array<{ x: number; y: number; width: number; height: number }> =
+      await win.webContents.executeJavaScript(`
+        Array.from(document.querySelectorAll('[id^="eq-"]')).map(el => {
+          const r = el.getBoundingClientRect();
+          return { x: Math.floor(r.left), y: Math.floor(r.top), width: Math.ceil(r.width), height: Math.ceil(r.height) };
+        })
+      `);
+
+    const results: Buffer[] = [];
+    for (const rect of rects) {
+      const img = await win.webContents.capturePage({
+        x: Math.max(rect.x, 0),
+        y: Math.max(rect.y, 0),
+        width: Math.max(rect.width, 1),
+        height: Math.max(rect.height, 1),
+      });
+      results.push(img.toPNG());
+    }
+    return results;
+  } finally {
+    win.close();
+    try {
+      fs.unlinkSync(tmpHtml);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 async function readFileContent(
   filePath: string,
@@ -113,8 +244,75 @@ function parseInlineText(text: string): TextRun[] {
 
 // ── Markdown → DOCX paragraphs ────────────────────────────────────────────────
 
-function markdownToDocxParagraphs(content: string): Paragraph[] {
-  const lines = content.split("\n");
+// Replace LaTeX delimiters with null-byte-delimited placeholders and return
+// the list of extracted equations in order.
+function extractLatex(content: string): {
+  processed: string;
+  equations: Array<{ latex: string; display: boolean }>;
+} {
+  const equations: Array<{ latex: string; display: boolean }> = [];
+
+  // Block math $$...$$ (handles multi-line)
+  let processed = content.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+    equations.push({ latex: math.replace(/\n/g, " ").trim(), display: true });
+    return `\x00B${equations.length - 1}\x00`;
+  });
+
+  // Inline math $...$ (single line, non-empty)
+  // eslint-disable-next-line no-control-regex
+  processed = processed.replace(new RegExp("\\$([^$\\n\\x00]+?)\\$", "g"), (_, math) => {
+    equations.push({ latex: math.trim(), display: false });
+    return `\x00I${equations.length - 1}\x00`;
+  });
+
+  return { processed, equations };
+}
+
+// Build docx run children for a line that may contain equation placeholders.
+function buildLineChildren(
+  line: string,
+  pngs: Buffer[],
+): Array<TextRun | ImageRun> {
+  // eslint-disable-next-line no-control-regex
+  const segments = line.split(new RegExp("\\x00([BI]\\d+)\\x00"));
+  const children: Array<TextRun | ImageRun> = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    if (i % 2 === 0) {
+      if (segments[i]) children.push(...parseInlineText(segments[i]));
+    } else {
+      const idx = parseInt(segments[i].slice(1));
+      const isBlock = segments[i][0] === "B";
+      const png = pngs[idx];
+      if (png && png.length >= 24) {
+        const pngW = png.readUInt32BE(16);
+        const pngH = png.readUInt32BE(20);
+        // capturePage returns physical pixels; divide by DPR for logical size
+        const DPR = 2;
+        const targetH = isBlock ? 40 : 22;
+        const scale = targetH / Math.max(pngH / DPR, 1);
+        children.push(
+          new ImageRun({
+            data: png,
+            transformation: {
+              width: Math.round((pngW / DPR) * scale),
+              height: targetH,
+            },
+            type: "png",
+          }),
+        );
+      }
+    }
+  }
+
+  return children;
+}
+
+async function markdownToDocxParagraphs(content: string): Promise<Paragraph[]> {
+  const { processed, equations } = extractLatex(normalizeMathDelimiters(content));
+  const pngs = await batchRenderLatexToPng(equations);
+
+  const lines = processed.split("\n");
   const result: Paragraph[] = [];
   let inCode = false;
   const codeLines: string[] = [];
@@ -148,55 +346,55 @@ function markdownToDocxParagraphs(content: string): Paragraph[] {
     if (line.startsWith("#### ")) {
       result.push(
         new Paragraph({
-          text: line.slice(5).trim(),
+          children: buildLineChildren(line.slice(5).trim(), pngs),
           heading: HeadingLevel.HEADING_4,
         }),
       );
     } else if (line.startsWith("### ")) {
       result.push(
         new Paragraph({
-          text: line.slice(4).trim(),
+          children: buildLineChildren(line.slice(4).trim(), pngs),
           heading: HeadingLevel.HEADING_3,
         }),
       );
     } else if (line.startsWith("## ")) {
       result.push(
         new Paragraph({
-          text: line.slice(3).trim(),
+          children: buildLineChildren(line.slice(3).trim(), pngs),
           heading: HeadingLevel.HEADING_2,
         }),
       );
     } else if (line.startsWith("# ")) {
       result.push(
         new Paragraph({
-          text: line.slice(2).trim(),
+          children: buildLineChildren(line.slice(2).trim(), pngs),
           heading: HeadingLevel.HEADING_1,
         }),
       );
     } else if (/^\s{2,}[-*+] /.test(line)) {
       result.push(
         new Paragraph({
-          children: parseInlineText(line.replace(/^\s*[-*+] /, "")),
+          children: buildLineChildren(line.replace(/^\s*[-*+] /, ""), pngs),
           bullet: { level: 1 },
         }),
       );
     } else if (/^[-*+] /.test(line)) {
       result.push(
         new Paragraph({
-          children: parseInlineText(line.slice(2)),
+          children: buildLineChildren(line.slice(2), pngs),
           bullet: { level: 0 },
         }),
       );
     } else if (/^\d+\. /.test(line)) {
       result.push(
         new Paragraph({
-          children: parseInlineText(line.replace(/^\d+\. /, "")),
+          children: buildLineChildren(line.replace(/^\d+\. /, ""), pngs),
         }),
       );
     } else if (line.trim() === "" || /^[-*_]{3,}$/.test(line.trim())) {
       result.push(new Paragraph(""));
     } else {
-      result.push(new Paragraph({ children: parseInlineText(line) }));
+      result.push(new Paragraph({ children: buildLineChildren(line, pngs) }));
     }
   }
 
@@ -205,7 +403,7 @@ function markdownToDocxParagraphs(content: string): Paragraph[] {
 
 async function buildDocxBuffer(content: string): Promise<Buffer> {
   const doc = new Document({
-    sections: [{ children: markdownToDocxParagraphs(content) }],
+    sections: [{ children: await markdownToDocxParagraphs(content) }],
   });
   return Packer.toBuffer(doc);
 }
@@ -230,8 +428,9 @@ const PDF_CSS = `
 `;
 
 async function buildPdfBuffer(content: string): Promise<Buffer> {
-  const html = marked.parse(content) as string;
-  const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${PDF_CSS}</style></head><body>${html}</body></html>`;
+  const normalized = normalizeMathDelimiters(content);
+  const html = markedWithMath.parse(normalized) as string;
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${getKatexCss()}\n${PDF_CSS}</style></head><body>${html}</body></html>`;
 
   const tmpHtml = path.join(os.tmpdir(), `agenteach-pdf-${Date.now()}.html`);
   fs.writeFileSync(tmpHtml, fullHtml, "utf-8");
@@ -270,22 +469,24 @@ export function createFileTools(
   index: WorkspaceIndex,
   sessionId?: string,
 ) {
-  const wsPath = path.resolve(workspace.path).normalize("NFC");
+  // macOS APFS stores filenames as NFD; Windows NTFS stores as-is (typically NFC).
+  const PATH_NORM: "NFD" | "NFC" = process.platform === "darwin" ? "NFD" : "NFC";
+  const wsPath = path.resolve(workspace.path).normalize(PATH_NORM);
 
   function resolveWorkspacePath(filePath: string): string {
-    const normalisedInput = filePath.normalize("NFC");
+    const normalisedInput = filePath.normalize(PATH_NORM);
     const expanded =
       normalisedInput.startsWith("~/") || normalisedInput === "~"
         ? path.join(os.homedir(), normalisedInput.slice(1))
         : normalisedInput;
     if (path.isAbsolute(expanded)) {
-      return path.resolve(expanded).normalize("NFC");
+      return path.resolve(expanded).normalize(PATH_NORM);
     }
     const normalised =
       !expanded || expanded === "." || expanded === workspace.name
         ? "."
         : expanded;
-    return path.resolve(wsPath, normalised).normalize("NFC");
+    return path.resolve(wsPath, normalised).normalize(PATH_NORM);
   }
 
   function inWorkspace(resolved: string): boolean {

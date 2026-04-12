@@ -1,8 +1,5 @@
 import "katex/dist/katex.min.css";
-import {
-  ChevronDown,
-  ChevronRight
-} from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -10,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { ReasoningItem, ToolCallItem } from "../stores/chatStore";
 import type { ChatMessage } from "../types/api";
+import { normalizeMathDelimiters } from "../lib/utils";
 
 // ── Thinking parser (for StreamingBubble only) ───────────────────────────────
 interface ParsedContent {
@@ -61,11 +59,9 @@ export function ExpandableBubble({
         onClick={() => setExpanded((v) => !v)}
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 cursor-pointer"
       >
-        {expanded ? (
-          <ChevronDown size={12} />
-        ) : (
-          <ChevronRight size={12} />
-        )}
+        <span>
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        </span>
         <span className="text-left">{label}</span>
         {isThinking && (
           <span className="inline-flex gap-0.5 ml-1">
@@ -112,9 +108,7 @@ export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
       <div className="overflow-hidden">
         {Object.keys(item.args).length > 0 && (
           <div className="px-3 py-2 border-b border-dashed">
-            <p
-              className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider"
-            >
+            <p className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider">
               Tham số
             </p>
             <div className="space-y-1">
@@ -133,9 +127,7 @@ export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
         )}
         {item.result && (
           <div className="px-3 py-2">
-            <p
-              className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider"
-            >
+            <p className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider">
               Kết quả
             </p>
             <pre className="text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed max-h-60 overflow-y-auto thin-scrollbar">
@@ -155,9 +147,7 @@ interface ReasoningBubbleProps {
 }
 
 export function ReasoningBubble({ item, isThinking }: ReasoningBubbleProps) {
-  const label = (
-    <span>{isThinking ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>
-  );
+  const label = <span>{isThinking ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>;
 
   return (
     <ExpandableBubble label={label} isThinking={isThinking}>
@@ -192,7 +182,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
       >
-        {message.content}
+        {normalizeMathDelimiters(message.content)}
       </ReactMarkdown>
     </div>
   );
@@ -236,7 +226,7 @@ export function StreamingBubble({
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex]}
           >
-            {parsed.text}
+            {normalizeMathDelimiters(parsed.text)}
           </ReactMarkdown>
           {isStreaming && (
             <div className="flex gap-0.5 mt-2">

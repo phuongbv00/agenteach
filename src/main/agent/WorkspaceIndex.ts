@@ -12,8 +12,12 @@ export class WorkspaceIndex {
   private watcher: fs.FSWatcher | null = null;
   private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // macOS APFS: NFD; Windows NTFS: NFC (stores as-is, keyboard input is NFC)
+  private static readonly PATH_NORM: "NFD" | "NFC" =
+    process.platform === "darwin" ? "NFD" : "NFC";
+
   constructor(private readonly wsPath: string) {
-    this.wsPath = wsPath.normalize('NFC');
+    this.wsPath = wsPath.normalize(WorkspaceIndex.PATH_NORM);
   }
 
   build(): void {
@@ -31,7 +35,7 @@ export class WorkspaceIndex {
     }
     for (const e of dirents) {
       if (e.name.startsWith('.')) continue;
-      const name = e.name.normalize('NFC');
+      const name = e.name.normalize(WorkspaceIndex.PATH_NORM);
       const full = path.join(dir, name);
       const rel = path.relative(this.wsPath, full);
       this.entries.push({ name, rel, isDir: e.isDirectory() });
