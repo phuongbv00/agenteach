@@ -12,7 +12,9 @@ export class WorkspaceIndex {
   private watcher: fs.FSWatcher | null = null;
   private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly wsPath: string) {}
+  constructor(private readonly wsPath: string) {
+    this.wsPath = wsPath.normalize('NFC');
+  }
 
   build(): void {
     this.entries = [];
@@ -29,9 +31,10 @@ export class WorkspaceIndex {
     }
     for (const e of dirents) {
       if (e.name.startsWith('.')) continue;
-      const full = path.join(dir, e.name);
+      const name = e.name.normalize('NFC');
+      const full = path.join(dir, name);
       const rel = path.relative(this.wsPath, full);
-      this.entries.push({ name: e.name, rel, isDir: e.isDirectory() });
+      this.entries.push({ name, rel, isDir: e.isDirectory() });
       if (e.isDirectory()) {
         this._walk(full, depth + 1);
       }
@@ -58,25 +61,40 @@ export class WorkspaceIndex {
     }
   }
 
-  /** Tìm file/folder theo tên (token-based, case-insensitive).
+  /** Bỏ dấu tiếng Việt để so khớp không dấu (VD: "giao an" → "giao an", "giáo án" → "giao an") */
+  private static stripDiacritics(s: string): string {
+    return s.normalize('NFD').replace(/\p{M}/gu, '')
+  }
+
+  /** Tìm file/folder theo tên (token-based, case-insensitive, hỗ trợ không dấu tiếng Việt).
    *  Query được tách thành các từ; tên file được normalize (-, _, . → space).
-   *  Kết quả gồm: match tất cả token (ưu tiên cao) + match ít nhất 1 token. */
+   *  Ưu tiên: khớp chính xác (có dấu) > khớp không dấu > khớp một phần có dấu > khớp một phần không dấu. */
   find(query: string): IndexEntry[] {
-    const normalize = (s: string) => s.toLowerCase().replace(/[-_.]/g, ' ');
+    const normalize = (s: string) => s.normalize('NFC').toLowerCase().replace(/[-_.]/g, ' ');
+    const loose = (s: string) => WorkspaceIndex.stripDiacritics(normalize(s));
+
     const tokens = normalize(query).split(/\s+/).filter(Boolean);
+    const looseTokens = loose(query).split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return [];
 
-    const allMatch: IndexEntry[] = [];
-    const anyMatch: IndexEntry[] = [];
+    const allStrict: IndexEntry[] = [];
+    const allLoose: IndexEntry[] = [];
+    const anyStrict: IndexEntry[] = [];
+    const anyLoose: IndexEntry[] = [];
 
     for (const e of this.entries) {
       const norm = normalize(e.name);
-      const matchCount = tokens.filter(t => norm.includes(t)).length;
-      if (matchCount === tokens.length) allMatch.push(e);
-      else if (matchCount > 0) anyMatch.push(e);
+      const looseNorm = loose(e.name);
+      const strictCount = tokens.filter(t => norm.includes(t)).length;
+      const looseCount = looseTokens.filter(t => looseNorm.includes(t)).length;
+
+      if (strictCount === tokens.length) allStrict.push(e);
+      else if (looseCount === looseTokens.length) allLoose.push(e);
+      else if (strictCount > 0) anyStrict.push(e);
+      else if (looseCount > 0) anyLoose.push(e);
     }
 
-    return [...allMatch, ...anyMatch];
+    return [...allStrict, ...allLoose, ...anyStrict, ...anyLoose];
   }
 
   /** Liệt kê con trực tiếp của một thư mục */

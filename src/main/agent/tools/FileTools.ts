@@ -270,21 +270,22 @@ export function createFileTools(
   index: WorkspaceIndex,
   sessionId?: string,
 ) {
-  const wsPath = path.resolve(workspace.path);
+  const wsPath = path.resolve(workspace.path).normalize("NFC");
 
   function resolveWorkspacePath(filePath: string): string {
+    const normalisedInput = filePath.normalize("NFC");
     const expanded =
-      filePath.startsWith("~/") || filePath === "~"
-        ? path.join(os.homedir(), filePath.slice(1))
-        : filePath;
+      normalisedInput.startsWith("~/") || normalisedInput === "~"
+        ? path.join(os.homedir(), normalisedInput.slice(1))
+        : normalisedInput;
     if (path.isAbsolute(expanded)) {
-      return path.resolve(expanded);
+      return path.resolve(expanded).normalize("NFC");
     }
     const normalised =
       !expanded || expanded === "." || expanded === workspace.name
         ? "."
         : expanded;
-    return path.resolve(wsPath, normalised);
+    return path.resolve(wsPath, normalised).normalize("NFC");
   }
 
   function inWorkspace(resolved: string): boolean {

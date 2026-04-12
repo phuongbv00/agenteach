@@ -1,10 +1,10 @@
 ---
 builtin: true
-name: Tạo Lecture Notes
-description: Soạn tóm tắt bài giảng có cấu trúc từ tài liệu nguồn trong workspace. Dùng khi giáo viên muốn tạo lecture notes, tóm tắt hoặc soạn ghi chú từ nội dung bài giảng.
+name: Tạo Ghi Chú Bài Giảng
+description: Soạn tóm tắt bài giảng có cấu trúc từ tài liệu nguồn trong workspace. Dùng khi giáo viên muốn tạo ghi chú bài giảng, tóm tắt hoặc soạn ghi chú từ nội dung bài giảng.
 ---
 
-# Skill: Tạo Lecture Notes
+# Skill: Tạo Ghi Chú Bài Giảng
 
 ## Mục tiêu
 
@@ -32,7 +32,7 @@ Chờ giáo viên trả lời. KHÔNG tự đoán hay đọc file ngẫu nhiên.
 - Có cần thêm ví dụ minh họa không
 - Định dạng xuất: PDF, DOCX hay Markdown
 
-### Bước 4 — Soạn lecture notes với cấu trúc sau
+### Bước 4 — Soạn ghi chú bài giảng với cấu trúc sau
 
 ```
 # [Tên bài giảng]
