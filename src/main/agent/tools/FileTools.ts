@@ -495,11 +495,9 @@ export function createFileTools(
 
   function artifactsDir(): string {
     return path.join(
-      os.homedir(),
+      wsPath,
       ".agenteach",
-      "cache",
       "artifacts",
-      workspace.id,
       sessionId ?? "default",
     );
   }
