@@ -7,6 +7,7 @@ export interface PluginSkill {
   name: string;
   description: string;
   prompt: string;
+  builtin?: boolean;
 }
 
 export interface PluginMCP {
@@ -62,6 +63,7 @@ function loadSkillsFromDir(dir: string): PluginSkill[] {
         name: String(meta.name ?? id),
         description: String(meta.description ?? ''),
         prompt: body,
+        builtin: meta.builtin === 'true',
       };
     });
 }
@@ -90,7 +92,8 @@ export const PluginLoader = {
   saveSkill(plugin: PluginSkill): void {
     const dir = skillsDir();
     fs.mkdirSync(dir, { recursive: true });
-    const frontmatter = `name: ${plugin.name}\ndescription: ${plugin.description}`;
+    let frontmatter = `name: ${plugin.name}\ndescription: ${plugin.description}`;
+    if (plugin.builtin) frontmatter += `\nbuiltin: true`;
     const content = `---\n${frontmatter}\n---\n\n${plugin.prompt}`;
     fs.writeFileSync(path.join(dir, `${plugin.id}.md`), content, 'utf-8');
   },

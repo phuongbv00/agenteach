@@ -21,7 +21,6 @@ export function seedSkills(): void {
   for (const file of fs.readdirSync(sourceDir)) {
     if (!file.endsWith('.md')) continue
     const dest = path.join(destDir, file)
-    if (fs.existsSync(dest)) continue
     fs.copyFileSync(path.join(sourceDir, file), dest)
   }
-}
+}    

@@ -20,6 +20,7 @@ import {
   Brain,
   Check,
   CheckCircle2,
+  Copy,
   FolderOpen,
   LifeBuoy,
   Pencil,
@@ -176,6 +177,16 @@ export default function SettingsPanel({ onClose }: Props) {
     reloadPlugins();
   };
 
+  const handleCloneSkill = (skill: PluginSkill) => {
+    const cloned: PluginSkill = {
+      ...skill,
+      id: `${skill.id}-copy`,
+      name: `${skill.name} (Bản sao)`,
+      builtin: false,
+    };
+    openEditForm(cloned, true);
+  };
+
   useEffect(() => {
     window.api.getMemory().then((m) => setMemory(m || ""));
     reloadPlugins();
@@ -283,8 +294,27 @@ export default function SettingsPanel({ onClose }: Props) {
         {/* ── Skill fields ── */}
         {!isMcp && (
           <>
+            {isNewPlugin && (
+              <div className="flex items-center gap-3">
+                <Label className="text-xs w-20 flex-shrink-0">
+                  ID <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={editingPlugin.id}
+                  onChange={(e) =>
+                    setEditingPlugin((prev) =>
+                      prev ? { ...prev, id: e.target.value } : null,
+                    )
+                  }
+                  placeholder="create-syllabus"
+                  className="h-8 text-sm font-mono"
+                />
+              </div>
+            )}
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">Tên</Label>
+              <Label className="text-xs w-20 flex-shrink-0">
+                Tên <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={(editingPlugin as PluginSkill)?.name || ""}
                 onChange={(e) =>
@@ -297,21 +327,24 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">Mô tả</Label>
-              <Input
+              <Label className="text-xs w-20 flex-shrink-0">
+                Mô tả <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
                 value={(editingPlugin as PluginSkill)?.description || ""}
                 onChange={(e) =>
                   setEditingPlugin((prev) =>
                     prev ? { ...prev, description: e.target.value } : null,
                   )
                 }
-                placeholder="Mô tả ngắn về skill"
-                className="h-8 text-sm"
+                placeholder="Mô tả ngắn về skill, khi nào skill nên được gọi"
+                className="w-full min-h-20 max-h-40"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Nội dung skill (instructions)
+              <Label className="text-xs">
+                Nội dung skill (instructions){" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 value={(editingPlugin as PluginSkill)?.prompt || ""}
@@ -321,8 +354,7 @@ export default function SettingsPanel({ onClose }: Props) {
                   )
                 }
                 placeholder="Viết instructions chi tiết để agent biết cách thực hiện skill này..."
-                rows={6}
-                className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-y font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full min-h-20 max-h-100"
               />
             </div>
           </>
@@ -333,7 +365,9 @@ export default function SettingsPanel({ onClose }: Props) {
           <>
             {isNewPlugin && (
               <div className="flex items-center gap-3">
-                <Label className="text-xs w-20 flex-shrink-0">ID</Label>
+                <Label className="text-xs w-20 flex-shrink-0">
+                  ID <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={editingPlugin.id}
                   onChange={(e) =>
@@ -765,22 +799,38 @@ export default function SettingsPanel({ onClose }: Props) {
                               </span>
                             </div>
                             <div className="flex gap-1 flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-muted-foreground"
-                                onClick={() => openEditForm(p, false)}
-                              >
-                                <Pencil size={12} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                className="text-muted-foreground hover:text-destructive"
-                                onClick={() => handleDeletePlugin(p)}
-                              >
-                                <Trash2 size={12} />
-                              </Button>
+                              {p.builtin ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-primary"
+                                  title="Tạo bản sao"
+                                  onClick={() =>
+                                    handleCloneSkill(p as PluginSkill)
+                                  }
+                                >
+                                  <Copy size={12} />
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-muted-foreground"
+                                    onClick={() => openEditForm(p, false)}
+                                  >
+                                    <Pencil size={12} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    className="text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleDeletePlugin(p)}
+                                  >
+                                    <Trash2 size={12} />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                           {p.description && (

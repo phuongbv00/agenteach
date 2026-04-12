@@ -27,6 +27,7 @@ export interface PluginSkill {
   name: string;
   description: string;
   prompt: string;
+  builtin?: boolean;
 }
 
 export interface PluginMCP {

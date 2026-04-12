@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Bài Giảng
 description: Soạn nội dung bài giảng đầy đủ cho một buổi học, bao gồm mục tiêu, nội dung trình bày, hoạt động và đánh giá. Dùng khi giáo viên muốn soạn giáo án, tạo bài giảng hoặc lên kế hoạch nội dung cho buổi học.
 ---

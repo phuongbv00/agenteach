@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Bài Kiểm Tra Tự Luận
 description: Soạn đề kiểm tra tự luận ngắn với thang điểm và hướng dẫn chấm. Dùng khi giáo viên muốn soạn đề kiểm tra tự luận ngắn hoặc đề thi cho học sinh.
 ---

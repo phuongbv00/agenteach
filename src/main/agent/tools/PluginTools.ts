@@ -16,23 +16,43 @@ export function createPluginTools() {
   const tools: Record<string, Tool> = {
     plugin_find_skills: tool({
       description:
-        "Tìm các skill phù hợp với yêu cầu hiện tại và trả về hướng dẫn chi tiết để thực thi. Gọi tool này khi cảm thấy có thể có skill hỗ trợ task nhưng không chắc chắn tên skill.",
+        "Tìm các skill phù hợp với yêu cầu hoặc lấy hướng dẫn của một skill cụ thể qua ID. Gọi tool này khi cần khám phá các khả năng hỗ trợ hoặc muốn lấy prompt chi tiết của một skill đã biết.",
       inputSchema: zodSchema(
         z.object({
           query: z
             .string()
+            .optional()
             .describe("Mô tả ngắn về yêu cầu cần tìm skill phù hợp"),
+          skill_id: z
+            .string()
+            .optional()
+            .describe("ID chính xác của skill (ví dụ: 'create-exercises')"),
         }),
       ),
-      execute: async (input: { query: string }) => {
+      execute: async (input: { query?: string; skill_id?: string }) => {
         const skills = PluginLoader.listSkills();
         if (skills.length === 0) return "Không có skill nào được cài đặt.";
 
-        const queryLower = input.query.toLowerCase();
+        // Priority 1: Exact ID match
+        if (input.skill_id) {
+          const s = skills.find((s) => s.id === input.skill_id);
+          if (s) return `## Skill: ${s.name}\n${s.prompt}`;
+          return `Không tìm thấy skill có ID là "${input.skill_id}".`;
+        }
+
+        // Priority 2: Search by query
+        const queryLower = (input.query ?? "").toLowerCase();
+        if (!queryLower) {
+          return skills
+            .map((s) => `- \`/${s.id}\`: ${s.name} - ${s.description}`)
+            .join("\n");
+        }
+
         const scored = skills.map((skill) => {
           let score = 0;
-          if (queryLower.startsWith(`/${skill.id}`)) score += 3;
-          if (queryLower.includes(skill.name.toLowerCase())) score += 2;
+          if (queryLower === skill.id.toLowerCase()) score += 10;
+          if (queryLower.includes(skill.id.toLowerCase())) score += 5;
+          if (queryLower.includes(skill.name.toLowerCase())) score += 3;
           if (queryLower.includes(skill.description.toLowerCase())) score += 1;
           return { skill, score };
         });
@@ -40,11 +60,11 @@ export function createPluginTools() {
         const relevant = scored
           .filter((s) => s.score > 0)
           .sort((a, b) => b.score - a.score);
-        const toShow =
-          relevant.length > 0 ? relevant.map((s) => s.skill) : skills;
 
-        return toShow
-          .map((s) => `## Skill: ${s.name}\n${s.prompt}`)
+        if (relevant.length === 0) return "Không tìm thấy skill nào phù hợp.";
+
+        return relevant
+          .map((s) => `## Skill: ${s.skill.name}\n${s.skill.prompt}`)
           .join("\n\n---\n\n");
       },
     }),
@@ -62,8 +82,7 @@ export function createPluginTools() {
       description: skill.description,
       inputSchema: zodSchema(z.object({})),
       execute: async () => {
-        console.log(`[skill] Tool called: ${skill.id}`);
-        return `[SKILL: ${skill.name}]\n\n${skill.prompt}`;
+        return skill.prompt;
       },
     });
 

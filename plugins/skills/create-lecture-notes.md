@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Lecture Notes
 description: Soạn tóm tắt bài giảng có cấu trúc từ tài liệu nguồn trong workspace. Dùng khi giáo viên muốn tạo lecture notes, tóm tắt hoặc soạn ghi chú từ nội dung bài giảng.
 ---

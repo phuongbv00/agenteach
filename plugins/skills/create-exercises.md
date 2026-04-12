@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Bài Tập
 description: Tạo bộ bài tập thực hành theo nội dung bài giảng với nhiều cấp độ. Dùng khi giáo viên muốn tạo hoặc soạn bài tập thực hành theo nội dung bài học.
 ---

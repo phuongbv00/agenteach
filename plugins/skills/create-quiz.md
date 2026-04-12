@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Quiz
 description: Tạo bộ câu hỏi trắc nghiệm nhiều lựa chọn từ nội dung bài giảng. Dùng khi giáo viên muốn tạo quiz hoặc bộ câu hỏi trắc nghiệm từ nội dung bài học.
 ---

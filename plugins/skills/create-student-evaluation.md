@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Đánh Giá Bài Tập Học Sinh
 description: Chấm điểm và đưa ra nhận xét chi tiết cho bài tập nộp của học sinh. Dùng khi giáo viên muốn chấm bài, đánh giá hoặc nhận xét bài tập học sinh đã nộp.
 ---

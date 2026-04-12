@@ -1,4 +1,5 @@
 ---
+builtin: true
 name: Tạo Hướng Dẫn Giải Bài Tập
 description: Soạn hướng dẫn giải chi tiết từng bước cho bộ bài tập có sẵn. Dùng khi giáo viên muốn soạn hướng dẫn giải, lời giải chi tiết hoặc đáp án cho bộ bài tập.
 ---
