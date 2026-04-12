@@ -15,6 +15,7 @@ const config: ForgeConfig = {
     appBundleId: "com.agenteach.app",
     asar: true,
     icon: "assets/icon",
+    extraResource: ["plugins/skills"],
   },
   rebuildConfig: {},
   makers: [

@@ -31,9 +31,11 @@ Liệt kê nội dung thư mục.
 
 ### `fs_search_in_files`
 
-Tìm kiếm nội dung văn bản bên trong các file.
+Tìm kiếm nội dung văn bản bên trong các file bằng grep (nhanh, hiệu quả).
 
 - **Dùng khi:** Cần tìm một đoạn nội dung cụ thể mà không biết file nào chứa nó.
+- Truyền `dir_path` để thu hẹp phạm vi tìm kiếm vào một thư mục cụ thể (hiệu quả hơn tìm toàn workspace).
+- **Trong chiến lược HITL:** Chỉ gọi tool này SAU KHI đã dùng `fs_list_dir` để khoanh vùng thư mục và đã hỏi user xác nhận phạm vi tìm đúng không. Không tự mình grep toàn workspace khi chưa có hướng từ user.
 
 ### `fs_write_file`
 

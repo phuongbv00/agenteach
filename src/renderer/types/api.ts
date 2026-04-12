@@ -1,7 +1,7 @@
-export type PermissionScope = 'once' | 'session' | 'always';
+export type PermissionScope = "once" | "session" | "always";
 
 export interface HitlRequest {
-  action: 'read' | 'write';
+  action: "read" | "write";
   filePath: string;
   replyChannel: string;
 }
@@ -24,7 +24,7 @@ export interface Session {
 
 export interface Plugin {
   id: string;
-  type: 'skill' | 'mcp';
+  type: "skill" | "mcp";
   name: string;
   description: string;
   // skill-specific
@@ -53,15 +53,21 @@ export interface AppConfigData {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
 export type StoredChatItem =
-  | { type: 'user_message'; content: string }
-  | { type: 'assistant_message'; content: string }
-  | { type: 'reasoning_block'; content: string }
-  | { type: 'tool_call'; toolName: string; label: string; args: Record<string, unknown>; result: string };
+  | { type: "user_message"; content: string }
+  | { type: "assistant_message"; content: string }
+  | { type: "reasoning_block"; content: string }
+  | {
+      type: "tool_call";
+      toolName: string;
+      label: string;
+      args: Record<string, unknown>;
+      result: string;
+    };
 
 export interface Artifact {
   id: string;
@@ -69,12 +75,12 @@ export interface Artifact {
   workspaceId: string;
   filePath: string;
   fileName: string;
-  type: 'pdf' | 'docx' | 'md';
+  type: "pdf" | "docx" | "md";
   createdAt: number;
 }
 
 export interface PreviewData {
-  type: 'md' | 'pdf' | 'docx';
+  type: "md" | "pdf" | "docx";
   fileName: string;
   filePath: string;
 }
@@ -96,14 +102,20 @@ declare global {
       getConfig(): Promise<AppConfigData>;
       updateConfig(patch: Partial<AppConfigData>): Promise<void>;
 
-      sendMessage(messages: ChatMessage[], sessionId?: string, model?: string): Promise<void>;
+      sendMessage(
+        messages: ChatMessage[],
+        sessionId?: string,
+        model?: string,
+      ): Promise<void>;
       cancelMessage(): Promise<void>;
       onToken(cb: (token: string) => void): void;
       onToolCall(cb: (event: ToolCallEvent) => void): void;
-      onToolCallStart(cb: (event: Omit<ToolCallEvent, 'result'>) => void): void;
+      onToolCallStart(cb: (event: Omit<ToolCallEvent, "result">) => void): void;
       onReasoning(cb: (text: string) => void): void;
       onDone(cb: () => void): void;
-      onFileProgress(cb: (info: { fileName: string; stage: 'reading' | 'parsing' }) => void): void;
+      onFileProgress(
+        cb: (info: { fileName: string; stage: "reading" | "parsing" }) => void,
+      ): void;
       offAgentEvents(): void;
       onPreviewFile(cb: (data: PreviewData) => void): void;
       offPreviewFile(): void;
@@ -112,19 +124,37 @@ declare global {
 
       onApprovalRequest(cb: (req: HitlRequest) => void): void;
       offApprovalRequest(): void;
-      replyApproval(replyChannel: string, approved: boolean, scope: PermissionScope): void;
+      replyApproval(
+        replyChannel: string,
+        approved: boolean,
+        scope: PermissionScope,
+      ): void;
 
-      createWorkspace(name: string, folderPath?: string): Promise<Workspace | null>;
+      createWorkspace(
+        name: string,
+        folderPath?: string,
+      ): Promise<Workspace | null>;
       listWorkspaces(): Promise<Workspace[]>;
       setActiveWorkspace(id: string): Promise<void>;
       deleteWorkspace(id: string): Promise<void>;
 
       listSessions(workspaceId: string): Promise<Session[]>;
       createSession(workspaceId: string): Promise<Session>;
-      renameSession(workspaceId: string, sessionId: string, name: string): Promise<void>;
+      renameSession(
+        workspaceId: string,
+        sessionId: string,
+        name: string,
+      ): Promise<void>;
       deleteSession(workspaceId: string, sessionId: string): Promise<void>;
-      loadSessionMessages(workspaceId: string, sessionId: string): Promise<StoredChatItem[]>;
-      saveSessionMessages(workspaceId: string, sessionId: string, items: StoredChatItem[]): Promise<void>;
+      loadSessionMessages(
+        workspaceId: string,
+        sessionId: string,
+      ): Promise<StoredChatItem[]>;
+      saveSessionMessages(
+        workspaceId: string,
+        sessionId: string,
+        items: StoredChatItem[],
+      ): Promise<void>;
 
       getMemory: () => Promise<string>;
       updateMemory: (content: string) => Promise<string>;
@@ -137,8 +167,15 @@ declare global {
       deleteProvider(id: string): Promise<void>;
       setActiveProvider(id: string): Promise<void>;
 
-      listArtifacts(workspaceId: string, sessionId: string): Promise<Artifact[]>;
-      deleteArtifact(workspaceId: string, sessionId: string, artifactId: string): Promise<void>;
+      listArtifacts(
+        workspaceId: string,
+        sessionId: string,
+      ): Promise<Artifact[]>;
+      deleteArtifact(
+        workspaceId: string,
+        sessionId: string,
+        artifactId: string,
+      ): Promise<void>;
       readFileText(filePath: string): Promise<string>;
       readFileBinary(filePath: string): Promise<Uint8Array>;
       readDocxHtml(filePath: string): Promise<string>;

@@ -12,6 +12,7 @@ import iconUrl from "../assets/icon.jpeg";
 import { Button } from "@/renderer/components/ui/button";
 import { Input } from "@/renderer/components/ui/input";
 import { Label } from "@/renderer/components/ui/label";
+import { Badge } from "./ui/badge";
 
 interface Props {
   onComplete: () => void;
@@ -29,7 +30,9 @@ const STEP_LABELS: Record<Step, string> = {
 type ProviderPreset = {
   id: string;
   label: string;
-  sublabel: string;
+  description: string;
+  badge: string;
+  badgeVariant: "warning" | "success";
   baseUrl: string;
   needsKey: boolean;
 };
@@ -37,17 +40,23 @@ type ProviderPreset = {
 const PRESETS: ProviderPreset[] = [
   {
     id: "ollama-local",
-    label: "Ollama — trên máy này",
-    sublabel: "localhost:11434",
+    label: "Máy tính cá nhân",
+    description:
+      "AI chạy trực tiếp trên máy tính này. Không cần internet, dữ liệu không rời khỏi máy tính của bạn.",
+    badge: "Yêu cầu máy cá nhân cấu hình mạnh",
+    badgeVariant: "warning",
     baseUrl: "http://localhost:11434/v1",
     needsKey: false,
   },
   {
-    id: "ollama-remote",
-    label: "Ollama — máy chủ trong trường",
-    sublabel: "Nhập địa chỉ IP",
+    id: "openai-compatible-remote",
+    label: "Máy chủ trung tâm",
+    description:
+      "Kết nối với AI do nhà trường hoặc đơn vị cung cấp quản lý. Liên hệ bộ phận IT để lấy địa chỉ máy chủ và mã kết nối (API Key).",
+    badge: "Dành cho máy cá nhân cấu hình yếu",
+    badgeVariant: "success",
     baseUrl: "",
-    needsKey: false,
+    needsKey: true,
   },
 ];
 
@@ -155,7 +164,7 @@ export default function SetupWizard({ onComplete }: Props) {
 
   return (
     <div className="flex items-center justify-center h-full bg-muted/30">
-      <div className="bg-card text-card-foreground shadow-lg p-8 w-full max-w-lg max-h-[90dvh] rounded-2xl flex flex-col">
+      <div className="bg-card text-card-foreground shadow-lg p-8 w-full max-w-2xl max-h-[90dvh] rounded-2xl flex flex-col">
         {/* Header */}
         <div className="text-center mb-6">
           <img
@@ -206,8 +215,8 @@ export default function SetupWizard({ onComplete }: Props) {
                   Kết nối AI
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Kết nối với bất kỳ AI nào theo chuẩn OpenAI — dữ liệu không
-                  rời khỏi mạng của bạn.
+                  Chọn cách kết nối phù hợp với bạn. Nếu không chắc, hãy liên hệ
+                  bộ phận IT của trường để được hướng dẫn.
                 </p>
               </div>
 
@@ -237,12 +246,23 @@ export default function SetupWizard({ onComplete }: Props) {
                         <div className="w-2 h-2 rounded-full bg-primary" />
                       )}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {p.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground/60">
-                        {p.sublabel}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-foreground">
+                          {p.label}
+                        </p>
+                        <Badge
+                          className={`${
+                            p.badgeVariant === "success"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {p.badge}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5 leading-relaxed">
+                        {p.description}
                       </p>
                     </div>
                   </button>
@@ -259,14 +279,7 @@ export default function SetupWizard({ onComplete }: Props) {
                       setConnectionOk(null);
                     }}
                     onKeyDown={(e) => e.key === "Enter" && handleConnect()}
-                    placeholder={
-                      "Địa chỉ (" +
-                      (selectedPresetId === "ollama-remote"
-                        ? "http://192.168.1.10:11434/v1"
-                        : activePreset.baseUrl ||
-                          "https://api.example.com/v1") +
-                      ")"
-                    }
+                    placeholder={`Địa chỉ (${activePreset.baseUrl || "https://api.example.com/v1"})`}
                     className="font-mono"
                   />
                   <Input
@@ -284,17 +297,14 @@ export default function SetupWizard({ onComplete }: Props) {
                 <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
                   <p className="font-medium">Không kết nối được. Kiểm tra:</p>
                   <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                    {(selectedPresetId === "ollama-local" ||
-                      selectedPresetId === "ollama-remote") && (
-                      <li>
-                        Ollama đã bật chưa? (chạy <code>ollama serve</code>)
-                      </li>
+                    {selectedPresetId === "ollama-local" && (
+                      <li>Ollama đã bật chưa?</li>
                     )}
                     {selectedPresetId !== PRESETS[0].id && (
                       <li>Địa chỉ URL có đúng không?</li>
                     )}
                     {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
-                    <li>Nhờ bộ phận IT hỗ trợ nếu cần</li>
+                    <li>Liên hệ bộ phận IT để được hỗ trợ chi tiết</li>
                   </ul>
                 </div>
               )}
@@ -316,12 +326,15 @@ export default function SetupWizard({ onComplete }: Props) {
                 <div className="space-y-4">
                   <div className="bg-primary/5 border border-primary/20 text-primary p-3 text-sm flex items-center">
                     <CheckCircle2 size={16} />
-                    <span className="ml-3">Kết nối thành công!</span>
+                    <span className="ml-3">
+                      Kết nối thành công! Vui lòng chọn mô hình AI bên dưới đề
+                      tiếp tục.
+                    </span>
                   </div>
 
                   <div>
                     <h3 className="text-sm font-semibold text-foreground mb-2">
-                      Chọn model AI
+                      Chọn mô hình AI
                     </h3>
                     <div className="space-y-2">
                       {models.length === 0 ? (
@@ -330,15 +343,17 @@ export default function SetupWizard({ onComplete }: Props) {
                             Chưa có model nào được cài đặt.
                           </p>
                           <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                            <li>
-                              Liên hệ bộ phận IT để được cài model phù hợp
-                            </li>
-                            <li>
-                              Hoặc tự tải qua terminal:{" "}
-                              <code className="bg-orange-100 px-1 rounded font-mono">
-                                ollama pull &lt;model&gt;
-                              </code>
-                            </li>
+                            {selectedPresetId === "ollama-local" ? (
+                              <li>
+                                Tải model qua terminal:{" "}
+                                <code className="bg-orange-100 px-1 rounded font-mono">
+                                  ollama pull &lt;model&gt;
+                                </code>
+                              </li>
+                            ) : (
+                              <li>Kiểm tra lại địa chỉ URL và API Key</li>
+                            )}
+                            <li>Liên hệ bộ phận IT nếu cần hỗ trợ</li>
                           </ul>
                         </div>
                       ) : (

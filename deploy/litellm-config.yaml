@@ -1,0 +1,56 @@
+# LiteLLM Proxy Configuration
+# Docs: https://docs.litellm.ai/docs/proxy/configs
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Uncomment to enable UI at http://<host>:4000/ui
+  # ui_access_mode: "all"
+
+litellm_settings:
+  # Drop unknown OpenAI params instead of erroring
+  drop_params: true
+  # Return standard OpenAI error codes
+  return_response_headers: true
+  # Request timeout (seconds)
+  request_timeout: 600
+
+model_list:
+  # ----------------------------------------------------------------
+  # Primary model served by vLLM on this machine
+  # The model name here is what Agenteach should set as "Model ID"
+  # ----------------------------------------------------------------
+  - model_name: qwen2.5-14b          # public alias exposed to clients
+    litellm_params:
+      model: openai/qwen2.5-14b      # "openai/" prefix → treat as OpenAI-compatible
+      api_base: http://vllm:8000/v1
+      api_key: "none"                # vLLM has no auth by default
+      max_tokens: 16384
+
+  # ----------------------------------------------------------------
+  # Add more models / providers below as needed
+  # ----------------------------------------------------------------
+
+  # Example: second local model on the same vLLM instance (swap --served-model-name)
+  # - model_name: llama3-8b
+  #   litellm_params:
+  #     model: openai/llama3-8b
+  #     api_base: http://vllm:8000/v1
+  #     api_key: "none"
+
+  # Example: fallback to OpenAI cloud
+  # - model_name: gpt-4o
+  #   litellm_params:
+  #     model: openai/gpt-4o
+  #     api_key: os.environ/OPENAI_API_KEY
+
+router_settings:
+  # Retry failed requests across replicas
+  num_retries: 2
+  retry_after: 5
+  # Health-check all backends on startup
+  routing_strategy: simple-shuffle
+
+# Optional rate limits per virtual key (set via LiteLLM UI or API)
+# default_team_settings:
+#   tpm_limit: 100000
+#   rpm_limit: 1000

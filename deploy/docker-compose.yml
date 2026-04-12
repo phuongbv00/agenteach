@@ -1,0 +1,65 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: agenteach-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - ${HF_CACHE_DIR:-~/.cache/huggingface}:/root/.cache/huggingface
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    command: >
+      --model ${VLLM_MODEL}
+      --dtype ${VLLM_DTYPE:-auto}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
+      --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.90}
+      --tensor-parallel-size ${VLLM_TENSOR_PARALLEL:-1}
+      --served-model-name ${VLLM_SERVED_NAME:-default}
+      --enable-prefix-caching
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-all}
+              capabilities: [gpu]
+    shm_size: "8gb"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: agenteach-litellm
+    depends_on:
+      vllm:
+        condition: service_healthy
+    environment:
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+      - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - STORE_MODEL_IN_DB=${STORE_MODEL_IN_DB:-false}
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    command:
+      ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  default:
+    name: agenteach-network

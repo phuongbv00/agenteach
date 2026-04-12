@@ -5,12 +5,17 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
 } from "@/renderer/components/ui/dialog";
 import { Input } from "@/renderer/components/ui/input";
 import { Label } from "@/renderer/components/ui/label";
 import { Separator } from "@/renderer/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/renderer/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/renderer/components/ui/tabs";
 import {
   Brain,
   Check,
@@ -37,17 +42,30 @@ import { Textarea } from "@/renderer/components/ui/textarea";
 function slugify(name: string): string {
   return name
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
 
 const EMPTY_SKILL: Plugin = {
-  id: "", type: "skill", name: "", description: "", triggers: [], prompt: "",
+  id: "",
+  type: "skill",
+  name: "",
+  description: "",
+  triggers: [],
+  prompt: "",
 };
 
 const EMPTY_MCP: Plugin = {
-  id: "", type: "mcp", name: "", description: "", triggers: [], prompt: "", command: "", args: [],
+  id: "",
+  type: "mcp",
+  name: "",
+  description: "",
+  triggers: [],
+  prompt: "",
+  command: "",
+  args: [],
 };
 
 interface Props {
@@ -109,8 +127,14 @@ export default function SettingsPanel({ onClose }: Props) {
     const plugin: Plugin = {
       ...editingPlugin,
       id,
-      triggers: editTriggers.split(",").map(t => t.trim()).filter(Boolean),
-      args: editingPlugin.type === 'mcp' ? editArgs.split(/\s+/).filter(Boolean) : undefined,
+      triggers: editTriggers
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      args:
+        editingPlugin.type === "mcp"
+          ? editArgs.split(/\s+/).filter(Boolean)
+          : undefined,
     };
     await window.api.savePlugin(plugin);
     setEditingPlugin(null);
@@ -118,7 +142,7 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   const handleDeletePlugin = async (plugin: Plugin) => {
-    const label = plugin.type === 'mcp' ? 'MCP server' : 'skill';
+    const label = plugin.type === "mcp" ? "MCP server" : "skill";
     if (!confirm(`Xoá ${label} "${plugin.name}"?`)) return;
     await window.api.deletePlugin(plugin.id);
     reloadPlugins();
@@ -214,10 +238,13 @@ export default function SettingsPanel({ onClose }: Props) {
   const renderPluginForm = () => (
     <div className="border p-4 space-y-3 bg-muted/30 my-2">
       <h4 className="text-sm font-semibold">
-        {isNewPlugin 
-          ? (editingPlugin?.type === 'skill' ? "Thêm Skill mới" : "Thêm MCP Server mới")
-          : (editingPlugin?.type === 'skill' ? "Cập nhật Skill" : "Cập nhật MCP Server")
-        }
+        {isNewPlugin
+          ? editingPlugin?.type === "skill"
+            ? "Thêm Skill mới"
+            : "Thêm MCP Server mới"
+          : editingPlugin?.type === "skill"
+            ? "Cập nhật Skill"
+            : "Cập nhật MCP Server"}
       </h4>
       <div className="flex items-center gap-3">
         <Label className="text-xs w-20 flex-shrink-0">Tên</Label>
@@ -312,7 +339,11 @@ export default function SettingsPanel({ onClose }: Props) {
         />
       </div>
       <div className="flex gap-2 justify-end pt-1">
-        <Button variant="ghost" size="sm" onClick={() => setEditingPlugin(null)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setEditingPlugin(null)}
+        >
           Huỷ
         </Button>
         <Button
@@ -333,7 +364,11 @@ export default function SettingsPanel({ onClose }: Props) {
           <DialogTitle>Cài đặt</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
+        <Tabs
+          value={tab}
+          onValueChange={setTab}
+          className="flex flex-col flex-1 min-h-0"
+        >
           <TabsList className="w-full">
             <TabsTrigger value="connection">
               <Plug size={14} /> Kết nối AI
@@ -361,7 +396,10 @@ export default function SettingsPanel({ onClose }: Props) {
                     size="xs"
                     className="text-primary"
                     onClick={() =>
-                      setEditingProvider({ ...EMPTY_PROVIDER, id: randomUUID() })
+                      setEditingProvider({
+                        ...EMPTY_PROVIDER,
+                        id: randomUUID(),
+                      })
                     }
                   >
                     + Thêm kết nối
@@ -372,7 +410,10 @@ export default function SettingsPanel({ onClose }: Props) {
                     <div
                       key={p.id}
                       className={`flex items-center gap-3 p-3 border transition-colors ${p.id === activeProviderId ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
-                      onClick={(e) => { e.stopPropagation(); handleSetActiveProvider(p.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSetActiveProvider(p.id);
+                      }}
                     >
                       <button
                         className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${p.id === activeProviderId ? "border-primary" : "border-muted-foreground/40"}`}
@@ -392,7 +433,10 @@ export default function SettingsPanel({ onClose }: Props) {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        onClick={(e) => { e.stopPropagation(); setEditingProvider({ ...p }) }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingProvider({ ...p });
+                        }}
                         className="text-muted-foreground"
                       >
                         <Pencil size={12} />
@@ -401,7 +445,10 @@ export default function SettingsPanel({ onClose }: Props) {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteProvider(p.id) }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProvider(p.id);
+                          }}
                           className="text-muted-foreground hover:text-destructive"
                         >
                           <X size={12} />
@@ -422,18 +469,38 @@ export default function SettingsPanel({ onClose }: Props) {
                   </h4>
                   {(
                     [
-                      { label: "Tên", key: "name", placeholder: "VD: Ollama local", mono: false },
-                      { label: "Base URL", key: "baseUrl", placeholder: "http://localhost:11434/v1", mono: true },
-                      { label: "API Key", key: "apiKey", placeholder: "Để trống nếu không cần", mono: true },
+                      {
+                        label: "Tên",
+                        key: "name",
+                        placeholder: "VD: OpenAI, Ollama, LM Studio...",
+                        mono: false,
+                      },
+                      {
+                        label: "Địa chỉ",
+                        key: "baseUrl",
+                        placeholder: "http://localhost:11434/v1",
+                        mono: true,
+                      },
+                      {
+                        label: "API Key",
+                        key: "apiKey",
+                        placeholder: "Để trống nếu không cần",
+                        mono: true,
+                      },
                     ] as const
                   ).map(({ label, key, placeholder, mono }) => (
                     <div key={key} className="flex items-center gap-3">
-                      <Label className="text-xs w-16 flex-shrink-0">{label}</Label>
+                      <Label className="text-xs w-16 flex-shrink-0">
+                        {label}
+                      </Label>
                       <Input
                         type={key === "apiKey" ? "password" : "text"}
                         value={editingProvider[key]}
                         onChange={(e) =>
-                          setEditingProvider({ ...editingProvider, [key]: e.target.value })
+                          setEditingProvider({
+                            ...editingProvider,
+                            [key]: e.target.value,
+                          })
                         }
                         placeholder={placeholder}
                         className={`h-8 text-sm ${mono ? "font-mono" : ""}`}
@@ -463,7 +530,10 @@ export default function SettingsPanel({ onClose }: Props) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => { setEditingProvider(null); setCheckResult(null); }}
+                      onClick={() => {
+                        setEditingProvider(null);
+                        setCheckResult(null);
+                      }}
                     >
                       Huỷ
                     </Button>
@@ -481,7 +551,9 @@ export default function SettingsPanel({ onClose }: Props) {
 
               {/* Model selection */}
               <div>
-                <h3 className="text-sm font-semibold mb-3">Model AI mặc định</h3>
+                <h3 className="text-sm font-semibold mb-3">
+                  Model AI mặc định
+                </h3>
                 <div className="space-y-2">
                   {providerModels.length === 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -515,7 +587,10 @@ export default function SettingsPanel({ onClose }: Props) {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-primary bg-primary/10">
+                    <Badge
+                      variant="secondary"
+                      className="text-primary bg-primary/10"
+                    >
                       Cá nhân hoá
                     </Badge>
                   </div>
@@ -552,54 +627,72 @@ export default function SettingsPanel({ onClose }: Props) {
                     <div className="flex items-center gap-2">
                       <Zap size={14} className="text-primary" />
                       <span className="text-sm font-medium">Skills</span>
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                        {plugins.filter(p => p.type === 'skill').length}
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] h-4 px-1"
+                      >
+                        {plugins.filter((p) => p.type === "skill").length}
                       </Badge>
                     </div>
                     <Button
                       variant="ghost"
                       size="xs"
                       className="text-primary h-7"
-                      onClick={() => openEditForm({ ...EMPTY_SKILL, id: "" }, true)}
+                      onClick={() =>
+                        openEditForm({ ...EMPTY_SKILL, id: "" }, true)
+                      }
                     >
                       <Plus size={13} className="mr-1" /> Thêm
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {plugins.filter(p => p.type === 'skill').length === 0 && (
-                      <p className="text-xs text-muted-foreground italic py-1">Chưa có skill nào.</p>
+                    {plugins.filter((p) => p.type === "skill").length === 0 && (
+                      <p className="text-xs text-muted-foreground italic py-1">
+                        Chưa có skill nào.
+                      </p>
                     )}
-                    {plugins.filter(p => p.type === 'skill').map(p => (
-                      <div key={p.id} className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium text-sm truncate">{p.name}</span>
-                            <span className="font-mono text-[10px] text-muted-foreground">/{p.id}</span>
+                    {plugins
+                      .filter((p) => p.type === "skill")
+                      .map((p) => (
+                        <div
+                          key={p.id}
+                          className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium text-sm truncate">
+                                {p.name}
+                              </span>
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                /{p.id}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                onClick={() => openEditForm(p, false)}
+                              >
+                                <Pencil size={12} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeletePlugin(p)}
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              onClick={() => openEditForm(p, false)}
-                            >
-                              <Pencil size={12} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeletePlugin(p)}
-                            >
-                              <Trash2 size={12} />
-                            </Button>
-                          </div>
+                          {p.description && (
+                            <p className="text-xs text-muted-foreground">
+                              {p.description}
+                            </p>
+                          )}
                         </div>
-                        {p.description && (
-                          <p className="text-xs text-muted-foreground">{p.description}</p>
-                        )}
-                      </div>
-                    ))}
+                      ))}
                   </div>
                   {editingPlugin?.type === "skill" && renderPluginForm()}
                 </div>
@@ -610,63 +703,83 @@ export default function SettingsPanel({ onClose }: Props) {
                     <div className="flex items-center gap-2">
                       <Server size={14} className="text-primary" />
                       <span className="text-sm font-medium">MCP Servers</span>
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                        {plugins.filter(p => p.type === 'mcp').length}
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] h-4 px-1"
+                      >
+                        {plugins.filter((p) => p.type === "mcp").length}
                       </Badge>
                     </div>
                     <Button
                       variant="ghost"
                       size="xs"
                       className="text-primary h-7"
-                      onClick={() => openEditForm({ ...EMPTY_MCP, id: "" }, true)}
+                      onClick={() =>
+                        openEditForm({ ...EMPTY_MCP, id: "" }, true)
+                      }
                     >
                       <Plus size={13} className="mr-1" /> Thêm
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {plugins.filter(p => p.type === 'mcp').length === 0 && (
-                      <p className="text-xs text-muted-foreground italic py-1">Chưa có MCP server nào.</p>
+                    {plugins.filter((p) => p.type === "mcp").length === 0 && (
+                      <p className="text-xs text-muted-foreground italic py-1">
+                        Chưa có MCP server nào.
+                      </p>
                     )}
-                    {plugins.filter(p => p.type === 'mcp').map(p => (
-                      <div key={p.id} className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-medium text-sm truncate">{p.name}</span>
-                            <span className="font-mono text-[10px] text-muted-foreground">/{p.id}</span>
+                    {plugins
+                      .filter((p) => p.type === "mcp")
+                      .map((p) => (
+                        <div
+                          key={p.id}
+                          className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium text-sm truncate">
+                                {p.name}
+                              </span>
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                /{p.id}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                onClick={() => openEditForm(p, false)}
+                              >
+                                <Pencil size={12} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground hover:text-destructive"
+                                onClick={() => handleDeletePlugin(p)}
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              onClick={() => openEditForm(p, false)}
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-mono font-normal flex-shrink-0"
                             >
-                              <Pencil size={12} />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeletePlugin(p)}
-                            >
-                              <Trash2 size={12} />
-                            </Button>
+                              {p.command}
+                            </Badge>
+                            {p.description && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {p.description}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] font-mono font-normal flex-shrink-0">
-                            {p.command}
-                          </Badge>
-                          {p.description && (
-                            <p className="text-xs text-muted-foreground truncate">{p.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                   {editingPlugin?.type === "mcp" && renderPluginForm()}
                 </div>
-
               </div>
             </TabsContent>
 
@@ -676,7 +789,8 @@ export default function SettingsPanel({ onClose }: Props) {
                 <h3 className="text-sm font-semibold">Logs ứng dụng</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   File log ghi lại toàn bộ hoạt động của ứng dụng (main process,
-                  renderer, lỗi). Gửi file này khi báo lỗi để được hỗ trợ nhanh hơn.
+                  renderer, lỗi). Gửi file này khi báo lỗi để được hỗ trợ nhanh
+                  hơn.
                 </p>
                 <div className="flex items-center gap-3">
                   <Button
@@ -692,7 +806,9 @@ export default function SettingsPanel({ onClose }: Props) {
                     </span>
                   )}
                   {exportResult === "cancel" && (
-                    <span className="text-xs text-muted-foreground">Đã huỷ</span>
+                    <span className="text-xs text-muted-foreground">
+                      Đã huỷ
+                    </span>
                   )}
                 </div>
               </div>

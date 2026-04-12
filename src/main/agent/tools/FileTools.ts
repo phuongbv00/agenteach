@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import readline from "readline";
 import { tool, zodSchema } from "ai";
 import { z } from "zod";
 import type { ToolsMetaMap } from "./meta";
@@ -461,52 +462,65 @@ export function createFileTools(
     }),
 
     fs_search_in_files: tool({
-      description: "Tìm kiếm nội dung văn bản trong các file của workspace",
+      description:
+        "Tìm kiếm nội dung văn bản trong các file của workspace (streaming line-by-line, hiệu quả). Hỗ trợ thu hẹp phạm vi theo thư mục — dùng sau khi đã xác nhận phạm vi với user.",
       inputSchema: zodSchema(
         z.object({
           query: z.string().describe("Chuỗi cần tìm kiếm"),
-          file_glob: z
+          dir_path: z
             .string()
             .optional()
-            .describe("Pattern lọc file, ví dụ: *.txt, *.docx"),
+            .describe(
+              'Thư mục cần tìm (tương đối trong workspace hoặc tuyệt đối). Mặc định: toàn workspace. VD: "Lop10/HK1"',
+            ),
         }),
       ),
-      execute: async (input: { query: string; file_glob?: string }) => {
-        const { query, file_glob } = input;
-        const results: string[] = [];
+      execute: async (input: { query: string; dir_path?: string }) => {
+        const { query, dir_path } = input;
+        const searchDir = dir_path ? resolveWorkspacePath(dir_path) : wsPath;
+        const relSearchDir = path.relative(wsPath, searchDir);
         const regex = new RegExp(
           query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "gi",
+          "i",
         );
+        const MAX_RESULTS = 30;
+        const results: string[] = [];
 
         const files = index.getFiles().filter((e) => {
           const ext = path.extname(e.name).toLowerCase();
-          if (![".txt", ".md", ".docx"].includes(ext)) return false;
-          if (file_glob) {
-            const pattern = file_glob.replace(".", "\\.").replace("*", ".*");
-            if (!new RegExp(pattern).test(e.name)) return false;
+          if (![".txt", ".md"].includes(ext)) return false;
+          if (relSearchDir && relSearchDir !== ".") {
+            if (
+              !e.rel.startsWith(relSearchDir + path.sep) &&
+              e.rel !== relSearchDir
+            )
+              return false;
           }
           return true;
         });
 
         for (const fileEntry of files) {
-          if (results.length >= 20) break;
-          const ext = path.extname(fileEntry.name).toLowerCase();
-          if (ext === ".docx") continue;
-          const full = path.join(wsPath, fileEntry.rel);
-          try {
-            const text = fs.readFileSync(full, "utf-8");
-            const lines = text.split("\n");
-            for (let i = 0; i < lines.length; i++) {
-              if (results.length >= 20) break;
-              if (regex.test(lines[i])) {
-                results.push(`${fileEntry.rel}:${i + 1}: ${lines[i].trim()}`);
+          if (results.length >= MAX_RESULTS) break;
+          const fullPath = path.join(wsPath, fileEntry.rel);
+          await new Promise<void>((resolve) => {
+            const rl = readline.createInterface({
+              input: fs.createReadStream(fullPath, { encoding: "utf-8" }),
+              crlfDelay: Infinity,
+            });
+            let lineNum = 0;
+            rl.on("line", (line: string) => {
+              lineNum++;
+              if (results.length >= MAX_RESULTS) {
+                rl.close();
+                return;
               }
-              regex.lastIndex = 0;
-            }
-          } catch {
-            // skip unreadable files
-          }
+              if (regex.test(line)) {
+                results.push(`${fileEntry.rel}:${lineNum}: ${line.trim()}`);
+              }
+            });
+            rl.on("close", resolve);
+            rl.on("error", resolve);
+          });
         }
 
         return results.length > 0
