@@ -2,17 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import { dataDir } from '../utils/dataDir';
 
-export interface Plugin {
+export interface PluginSkill {
   id: string;
-  type: 'skill' | 'mcp';
   name: string;
   description: string;
-  // skill-specific
-  triggers: string[];
   prompt: string;
-  // mcp-specific
+}
+
+export interface PluginMCP {
+  id: string;
+  // stdio server
   command?: string;
   args?: string[];
+  env?: Record<string, string>;
+  // remote server
+  url?: string;
 }
 
 function parseFrontmatter(content: string): { meta: Record<string, string | string[]>; body: string } {
@@ -36,11 +40,15 @@ function parseFrontmatter(content: string): { meta: Record<string, string | stri
   return { meta, body: match[2].trim() };
 }
 
-function pluginDir(): string {
-  return dataDir('plugins');
+function skillsDir(): string {
+  return dataDir('plugins', 'skills');
 }
 
-function loadFromDir(dir: string): Plugin[] {
+function mcpDir(): string {
+  return dataDir('plugins', 'mcp');
+}
+
+function loadSkillsFromDir(dir: string): PluginSkill[] {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
@@ -49,71 +57,69 @@ function loadFromDir(dir: string): Plugin[] {
       const content = fs.readFileSync(path.join(dir, f), 'utf-8');
       const { meta, body } = parseFrontmatter(content);
       const id = f.replace('.md', '');
-      const type = (meta.type === 'mcp' ? 'mcp' : 'skill') as Plugin['type'];
       return {
         id,
-        type,
         name: String(meta.name ?? id),
         description: String(meta.description ?? ''),
-        triggers: Array.isArray(meta.triggers)
-          ? (meta.triggers as string[])
-          : meta.triggers
-          ? [String(meta.triggers)]
-          : [],
         prompt: body,
-        command: meta.command ? String(meta.command) : undefined,
-        args: Array.isArray(meta.args)
-          ? (meta.args as string[])
-          : meta.args
-          ? [String(meta.args)]
-          : undefined,
       };
     });
 }
 
+function loadMcpFromDir(dir: string): PluginMCP[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
+      const raw = fs.readFileSync(path.join(dir, f), 'utf-8');
+      const data = JSON.parse(raw) as Omit<PluginMCP, 'id'>;
+      const id = f.replace('.json', '');
+      // Always spread `command` key so `'command' in p` reliably identifies MCPs
+      return { command: undefined, ...data, id } as PluginMCP;
+    });
+}
+
 export const PluginLoader = {
-  load(): Plugin[] {
-    return loadFromDir(pluginDir());
-  },
+  skillsDir(): string { return skillsDir(); },
+  mcpDir(): string { return mcpDir(); },
 
-  pluginDir(): string {
-    return pluginDir();
-  },
+  listSkills(): PluginSkill[] { return loadSkillsFromDir(skillsDir()); },
+  listMcp(): PluginMCP[] { return loadMcpFromDir(mcpDir()); },
 
-  save(plugin: Omit<Plugin, never>): void {
-    const dir = pluginDir();
+  saveSkill(plugin: PluginSkill): void {
+    const dir = skillsDir();
     fs.mkdirSync(dir, { recursive: true });
-    let frontmatter = `type: ${plugin.type}\nname: ${plugin.name}\ndescription: ${plugin.description}`;
-    if (plugin.type === 'skill') {
-      const triggersStr = plugin.triggers.map((t) => `"${t}"`).join(', ');
-      frontmatter += `\ntriggers: [${triggersStr}]`;
-    } else {
-      if (plugin.command) frontmatter += `\ncommand: ${plugin.command}`;
-      if (plugin.args?.length) {
-        const argsStr = plugin.args.map((a) => `"${a}"`).join(', ');
-        frontmatter += `\nargs: [${argsStr}]`;
-      }
-    }
-    const content = `---\n${frontmatter}\n---\n\n${plugin.prompt ?? ''}`;
+    const frontmatter = `name: ${plugin.name}\ndescription: ${plugin.description}`;
+    const content = `---\n${frontmatter}\n---\n\n${plugin.prompt}`;
     fs.writeFileSync(path.join(dir, `${plugin.id}.md`), content, 'utf-8');
   },
 
-  delete(pluginId: string): void {
-    const filePath = path.join(pluginDir(), `${pluginId}.md`);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  saveMcp(plugin: PluginMCP): void {
+    const dir = mcpDir();
+    fs.mkdirSync(dir, { recursive: true });
+    const { id, ...data } = plugin;
+    fs.writeFileSync(
+      path.join(dir, `${id}.json`),
+      JSON.stringify(data, null, 2),
+      'utf-8',
+    );
   },
 
-  match(plugins: Plugin[], message: string): Plugin | null {
-    const lower = message.toLowerCase();
-    for (const plugin of plugins) {
-      if (plugin.type !== 'skill') continue;
-      for (const trigger of plugin.triggers) {
-        if (trigger.startsWith('/')) {
-          if (lower.startsWith(trigger.toLowerCase())) return plugin;
-        } else {
-          if (lower.includes(trigger.toLowerCase())) return plugin;
-        }
-      }
+  deleteSkill(id: string): void {
+    const p = path.join(skillsDir(), `${id}.md`);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  },
+
+  deleteMcp(id: string): void {
+    const p = path.join(mcpDir(), `${id}.json`);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  },
+
+  match(skills: PluginSkill[], message: string): PluginSkill | null {
+    const lower = message.toLowerCase().trimStart();
+    for (const skill of skills) {
+      if (lower.startsWith(`/${skill.id}`)) return skill;
     }
     return null;
   },

@@ -1,13 +1,22 @@
-import { tool, zodSchema } from "ai";
+import { Tool, tool, zodSchema } from "ai";
 import { z } from "zod";
 import { PluginLoader } from "../../plugins/PluginLoader";
 import type { ToolsMetaMap } from "./meta";
 
+/**
+ * Dynamically creates one tool per installed skill + a general find_skills tool.
+ * The specific tools' descriptions = skill.description, so the LLM can decide
+ * which skill to invoke based on the user's request.
+ *
+ * plugin_find_skills is kept for discovery or lazy-loading discovery in the future.
+ */
 export function createPluginTools() {
-  const tools = {
+  const skills = PluginLoader.listSkills();
+
+  const tools: Record<string, Tool> = {
     plugin_find_skills: tool({
       description:
-        "Tìm các skill phù hợp với yêu cầu hiện tại và trả về hướng dẫn chi tiết để thực thi. Gọi tool này khi cảm thấy có thể có skill hỗ trợ task, sau đó làm theo hướng dẫn trả về.",
+        "Tìm các skill phù hợp với yêu cầu hiện tại và trả về hướng dẫn chi tiết để thực thi. Gọi tool này khi cảm thấy có thể có skill hỗ trợ task nhưng không chắc chắn tên skill.",
       inputSchema: zodSchema(
         z.object({
           query: z
@@ -16,22 +25,15 @@ export function createPluginTools() {
         }),
       ),
       execute: async (input: { query: string }) => {
-        const allPlugins = PluginLoader.load();
-        const skills = allPlugins.filter((p) => p.type === "skill");
+        const skills = PluginLoader.listSkills();
         if (skills.length === 0) return "Không có skill nào được cài đặt.";
 
         const queryLower = input.query.toLowerCase();
         const scored = skills.map((skill) => {
           let score = 0;
-          for (const trigger of skill.triggers) {
-            const t = trigger.toLowerCase();
-            if (t.startsWith("/")) {
-              if (queryLower.startsWith(t)) score += 3;
-            } else {
-              if (queryLower.includes(t)) score += 2;
-            }
-          }
-          if (queryLower.includes(skill.name.toLowerCase())) score += 1;
+          if (queryLower.startsWith(`/${skill.id}`)) score += 3;
+          if (queryLower.includes(skill.name.toLowerCase())) score += 2;
+          if (queryLower.includes(skill.description.toLowerCase())) score += 1;
           return { skill, score };
         });
 
@@ -51,6 +53,24 @@ export function createPluginTools() {
   const meta: ToolsMetaMap = {
     plugin_find_skills: { label: (args) => `Tìm skill: "${args.query ?? ""}"` },
   };
+
+  for (const skill of skills) {
+    // Tool name must be a valid identifier — replace hyphens with underscores
+    const toolName = `plugin_skill_${skill.id.replace(/-/g, "_")}`;
+
+    tools[toolName] = tool({
+      description: skill.description,
+      inputSchema: zodSchema(z.object({})),
+      execute: async () => {
+        console.log(`[skill] Tool called: ${skill.id}`);
+        return `[SKILL: ${skill.name}]\n\n${skill.prompt}`;
+      },
+    });
+
+    meta[toolName] = {
+      label: () => `Skill: ${skill.name}`,
+    };
+  }
 
   return { tools, meta };
 }

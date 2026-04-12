@@ -202,21 +202,26 @@ export function registerHandlers(win: BrowserWindow): void {
     shell.showItemInFolder(filePath);
   });
 
-  // Plugins
-  ipcMain.handle("plugins:list", () => {
-    return PluginLoader.load();
+  // Plugins — Skills
+  ipcMain.handle("plugins:listSkills", () => PluginLoader.listSkills());
+  ipcMain.handle("plugins:saveSkill", (_e, plugin: Parameters<typeof PluginLoader.saveSkill>[0]) => {
+    PluginLoader.saveSkill(plugin);
   });
-  ipcMain.handle(
-    "plugins:save",
-    (_e, plugin: Parameters<typeof PluginLoader.save>[0]) => {
-      PluginLoader.save(plugin);
-    },
-  );
-  ipcMain.handle("plugins:delete", (_e, pluginId: string) => {
-    PluginLoader.delete(pluginId);
+  ipcMain.handle("plugins:deleteSkill", (_e, id: string) => PluginLoader.deleteSkill(id));
+  ipcMain.handle("plugins:openSkillsDir", () => {
+    const dir = PluginLoader.skillsDir();
+    fs.mkdirSync(dir, { recursive: true });
+    shell.openPath(dir);
   });
-  ipcMain.handle("plugins:openDir", () => {
-    const dir = PluginLoader.pluginDir();
+
+  // Plugins — MCP
+  ipcMain.handle("plugins:listMcp", () => PluginLoader.listMcp());
+  ipcMain.handle("plugins:saveMcp", (_e, plugin: Parameters<typeof PluginLoader.saveMcp>[0]) => {
+    PluginLoader.saveMcp(plugin);
+  });
+  ipcMain.handle("plugins:deleteMcp", (_e, id: string) => PluginLoader.deleteMcp(id));
+  ipcMain.handle("plugins:openMcpDir", () => {
+    const dir = PluginLoader.mcpDir();
     fs.mkdirSync(dir, { recursive: true });
     shell.openPath(dir);
   });

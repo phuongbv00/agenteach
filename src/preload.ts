@@ -161,13 +161,19 @@ contextBridge.exposeInMainWorld("api", {
   showInFolder: (filePath: string) =>
     ipcRenderer.invoke("shell:showInFolder", filePath),
 
-  // Plugins
-  listPlugins: () => ipcRenderer.invoke("plugins:list"),
-  savePlugin: (plugin: Record<string, unknown>) =>
-    ipcRenderer.invoke("plugins:save", plugin),
-  deletePlugin: (pluginId: string) =>
-    ipcRenderer.invoke("plugins:delete", pluginId),
-  openPluginsDir: () => ipcRenderer.invoke("plugins:openDir"),
+  // Plugins — Skills
+  listSkills: () => ipcRenderer.invoke("plugins:listSkills"),
+  saveSkill: (plugin: Record<string, unknown>) =>
+    ipcRenderer.invoke("plugins:saveSkill", plugin),
+  deleteSkill: (id: string) => ipcRenderer.invoke("plugins:deleteSkill", id),
+  openSkillsDir: () => ipcRenderer.invoke("plugins:openSkillsDir"),
+
+  // Plugins — MCP
+  listMcp: () => ipcRenderer.invoke("plugins:listMcp"),
+  saveMcp: (plugin: Record<string, unknown>) =>
+    ipcRenderer.invoke("plugins:saveMcp", plugin),
+  deleteMcp: (id: string) => ipcRenderer.invoke("plugins:deleteMcp", id),
+  openMcpDir: () => ipcRenderer.invoke("plugins:openMcpDir"),
 
   // Logs
   exportLogs: () => ipcRenderer.invoke("system:exportLogs"),

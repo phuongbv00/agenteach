@@ -22,17 +22,21 @@ export interface Session {
   updatedAt: number;
 }
 
-export interface Plugin {
+export interface PluginSkill {
   id: string;
-  type: "skill" | "mcp";
   name: string;
   description: string;
-  // skill-specific
-  triggers: string[];
   prompt: string;
-  // mcp-specific
+}
+
+export interface PluginMCP {
+  id: string;
+  // stdio server
   command?: string;
   args?: string[];
+  env?: Record<string, string>;
+  // remote server
+  url?: string;
 }
 
 export interface AIProvider {
@@ -182,10 +186,16 @@ declare global {
       openFile(filePath: string): Promise<void>;
       showInFolder(filePath: string): Promise<void>;
 
-      listPlugins(): Promise<Plugin[]>;
-      savePlugin(plugin: Plugin): Promise<void>;
-      deletePlugin(pluginId: string): Promise<void>;
-      openPluginsDir(): Promise<void>;
+      // Skills
+      listSkills(): Promise<PluginSkill[]>;
+      saveSkill(plugin: PluginSkill): Promise<void>;
+      deleteSkill(id: string): Promise<void>;
+      openSkillsDir(): Promise<void>;
+      // MCP
+      listMcp(): Promise<PluginMCP[]>;
+      saveMcp(plugin: PluginMCP): Promise<void>;
+      deleteMcp(id: string): Promise<void>;
+      openMcpDir(): Promise<void>;
       exportLogs(): Promise<boolean>;
     };
   }

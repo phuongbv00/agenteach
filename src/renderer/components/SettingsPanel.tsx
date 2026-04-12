@@ -25,6 +25,7 @@ import {
   Pencil,
   Plug,
   Plus,
+  Search,
   Server,
   Trash2,
   X,
@@ -33,7 +34,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { AIProvider, Plugin } from "../types/api";
+import type { AIProvider, PluginSkill, PluginMCP } from "../types/api";
 import { randomUUID } from "../utils/uuid";
 import { Textarea } from "@/renderer/components/ui/textarea";
 
@@ -48,24 +49,19 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const EMPTY_SKILL: Plugin = {
+const EMPTY_SKILL: PluginSkill = {
   id: "",
-  type: "skill",
   name: "",
   description: "",
-  triggers: [],
   prompt: "",
 };
 
-const EMPTY_MCP: Plugin = {
+const EMPTY_MCP: PluginMCP = {
   id: "",
-  type: "mcp",
-  name: "",
-  description: "",
-  triggers: [],
-  prompt: "",
   command: "",
   args: [],
+  env: {},
+  url: "",
 };
 
 interface Props {
@@ -105,46 +101,78 @@ export default function SettingsPanel({ onClose }: Props) {
   const [memSaved, setMemSaved] = useState(false);
 
   const [tab, setTab] = useState("connection");
+  const [pluginTab, setPluginTab] = useState("skills");
 
-  const [plugins, setPlugins] = useState<Plugin[]>([]);
-  const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
-  const [editTriggers, setEditTriggers] = useState("");
+  const [skills, setSkills] = useState<PluginSkill[]>([]);
+  const [mcps, setMcps] = useState<PluginMCP[]>([]);
+  const [editingPlugin, setEditingPlugin] = useState<
+    PluginSkill | PluginMCP | null
+  >(null);
   const [editArgs, setEditArgs] = useState("");
+  const [editEnv, setEditEnv] = useState("");
   const [isNewPlugin, setIsNewPlugin] = useState(false);
+  const [skillSearch, setSkillSearch] = useState("");
+  const [mcpSearch, setMcpSearch] = useState("");
 
-  const reloadPlugins = () => window.api.listPlugins().then(setPlugins);
+  const reloadPlugins = () => {
+    window.api.listSkills().then(setSkills);
+    window.api.listMcp().then(setMcps);
+  };
 
-  const openEditForm = (plugin: Plugin, isNew: boolean) => {
+  const isSkill = (p: PluginSkill | PluginMCP): p is PluginSkill =>
+    !("command" in p);
+
+  const envToText = (env?: Record<string, string>) =>
+    Object.entries(env ?? {})
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+
+  const textToEnv = (text: string): Record<string, string> =>
+    Object.fromEntries(
+      text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.includes("="))
+        .map((l) => {
+          const idx = l.indexOf("=");
+          return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()] as [
+            string,
+            string,
+          ];
+        }),
+    );
+
+  const openEditForm = (plugin: PluginSkill | PluginMCP, isNew: boolean) => {
     setEditingPlugin({ ...plugin });
-    setEditTriggers(plugin.triggers?.join(", ") ?? "");
-    setEditArgs(plugin.args?.join(" ") ?? "");
+    if (!isSkill(plugin)) {
+      setEditArgs(plugin.args?.join(" ") ?? "");
+      setEditEnv(envToText(plugin.env));
+    }
     setIsNewPlugin(isNew);
   };
 
   const handleSavePlugin = async () => {
     if (!editingPlugin) return;
-    const id = editingPlugin.id || slugify(editingPlugin.name);
-    const plugin: Plugin = {
-      ...editingPlugin,
-      id,
-      triggers: editTriggers
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      args:
-        editingPlugin.type === "mcp"
-          ? editArgs.split(/\s+/).filter(Boolean)
-          : undefined,
-    };
-    await window.api.savePlugin(plugin);
+    if (isSkill(editingPlugin)) {
+      const id = editingPlugin.id || slugify(editingPlugin.name);
+      await window.api.saveSkill({ ...editingPlugin, id });
+    } else {
+      await window.api.saveMcp({
+        ...editingPlugin,
+        args: editArgs.split(/\s+/).filter(Boolean),
+        env: textToEnv(editEnv),
+      });
+    }
     setEditingPlugin(null);
     reloadPlugins();
   };
 
-  const handleDeletePlugin = async (plugin: Plugin) => {
-    const label = plugin.type === "mcp" ? "MCP server" : "skill";
-    if (!confirm(`Xoá ${label} "${plugin.name}"?`)) return;
-    await window.api.deletePlugin(plugin.id);
+  const handleDeletePlugin = async (plugin: PluginSkill | PluginMCP) => {
+    const label = isSkill(plugin) ? "skill" : "MCP server";
+    const display = isSkill(plugin) ? plugin.name : plugin.id;
+    if (!confirm(`Xoá ${label} "${display}"?`)) return;
+    if (isSkill(plugin)) await window.api.deleteSkill(plugin.id);
+    else await window.api.deleteMcp(plugin.id);
     reloadPlugins();
   };
 
@@ -235,127 +263,152 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   // ── Plugins Form Helper ────────────────────────────────────
-  const renderPluginForm = () => (
-    <div className="border p-4 space-y-3 bg-muted/30 my-2">
-      <h4 className="text-sm font-semibold">
-        {isNewPlugin
-          ? editingPlugin?.type === "skill"
-            ? "Thêm Skill mới"
-            : "Thêm MCP Server mới"
-          : editingPlugin?.type === "skill"
-            ? "Cập nhật Skill"
-            : "Cập nhật MCP Server"}
-      </h4>
-      <div className="flex items-center gap-3">
-        <Label className="text-xs w-20 flex-shrink-0">Tên</Label>
-        <Input
-          value={editingPlugin?.name || ""}
-          onChange={(e) =>
-            setEditingPlugin((prev) =>
-              prev ? { ...prev, name: e.target.value } : null,
-            )
-          }
-          placeholder={
-            editingPlugin?.type === "skill"
-              ? "VD: Soạn giáo án"
-              : "VD: Search Google"
-          }
-          className="h-8 text-sm"
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <Label className="text-xs w-20 flex-shrink-0">Mô tả</Label>
-        <Input
-          value={editingPlugin?.description || ""}
-          onChange={(e) =>
-            setEditingPlugin((prev) =>
-              prev ? { ...prev, description: e.target.value } : null,
-            )
-          }
-          placeholder="Mô tả ngắn về plugin"
-          className="h-8 text-sm"
-        />
-      </div>
+  const renderPluginForm = () => {
+    const isMcp = editingPlugin && !isSkill(editingPlugin);
+    const canSave = isMcp
+      ? !!editingPlugin.id.trim()
+      : !!(editingPlugin as PluginSkill | null)?.name?.trim();
+    return (
+      <div className="border p-4 space-y-3 bg-muted/30 my-2">
+        <h4 className="text-sm font-semibold">
+          {isNewPlugin
+            ? isMcp
+              ? "Thêm MCP Server mới"
+              : "Thêm Skill mới"
+            : isMcp
+              ? "Cập nhật MCP Server"
+              : "Cập nhật Skill"}
+        </h4>
 
-      {editingPlugin?.type === "skill" && (
-        <div className="flex items-center gap-3">
-          <Label className="text-xs w-20 flex-shrink-0">Triggers</Label>
-          <Input
-            value={editTriggers}
-            onChange={(e) => setEditTriggers(e.target.value)}
-            placeholder="soạn giáo án, lesson plan (cách nhau bằng dấu phẩy)"
-            className="h-8 text-sm"
-          />
+        {/* ── Skill fields ── */}
+        {!isMcp && (
+          <>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-20 flex-shrink-0">Tên</Label>
+              <Input
+                value={(editingPlugin as PluginSkill)?.name || ""}
+                onChange={(e) =>
+                  setEditingPlugin((prev) =>
+                    prev ? { ...prev, name: e.target.value } : null,
+                  )
+                }
+                placeholder="VD: Soạn giáo án"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-20 flex-shrink-0">Mô tả</Label>
+              <Input
+                value={(editingPlugin as PluginSkill)?.description || ""}
+                onChange={(e) =>
+                  setEditingPlugin((prev) =>
+                    prev ? { ...prev, description: e.target.value } : null,
+                  )
+                }
+                placeholder="Mô tả ngắn về skill"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Nội dung skill (instructions)
+              </Label>
+              <Textarea
+                value={(editingPlugin as PluginSkill)?.prompt || ""}
+                onChange={(e) =>
+                  setEditingPlugin((prev) =>
+                    prev ? { ...prev, prompt: e.target.value } : null,
+                  )
+                }
+                placeholder="Viết instructions chi tiết để agent biết cách thực hiện skill này..."
+                rows={6}
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-y font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </>
+        )}
+
+        {/* ── MCP fields ── */}
+        {isMcp && (
+          <>
+            {isNewPlugin && (
+              <div className="flex items-center gap-3">
+                <Label className="text-xs w-20 flex-shrink-0">ID</Label>
+                <Input
+                  value={editingPlugin.id}
+                  onChange={(e) =>
+                    setEditingPlugin((prev) =>
+                      prev ? { ...prev, id: e.target.value } : null,
+                    )
+                  }
+                  placeholder="my-mcp-server"
+                  className="h-8 text-sm font-mono"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-20 flex-shrink-0">URL</Label>
+              <Input
+                value={editingPlugin.url || ""}
+                onChange={(e) =>
+                  setEditingPlugin((prev) =>
+                    prev ? { ...prev, url: e.target.value } : null,
+                  )
+                }
+                placeholder="https://mcp.example.com/mcp"
+                className="h-8 text-sm font-mono"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-20 flex-shrink-0">Command</Label>
+              <Input
+                value={editingPlugin.command || ""}
+                onChange={(e) =>
+                  setEditingPlugin((prev) =>
+                    prev ? { ...prev, command: e.target.value } : null,
+                  )
+                }
+                placeholder="npx, node, uv..."
+                className="h-8 text-sm font-mono"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Label className="text-xs w-20 flex-shrink-0">Args</Label>
+              <Input
+                value={editArgs}
+                onChange={(e) => setEditArgs(e.target.value)}
+                placeholder="-y @modelcontextprotocol/server-sqlite --db /path/to/db"
+                className="h-8 text-sm font-mono"
+              />
+            </div>
+            <div className="flex items-start gap-3">
+              <Label className="text-xs w-20 flex-shrink-0 pt-1.5">Env</Label>
+              <Textarea
+                value={editEnv}
+                onChange={(e) => setEditEnv(e.target.value)}
+                placeholder={"API_KEY=your_secret\nOTHER_VAR=value"}
+                rows={3}
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-y font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditingPlugin(null)}
+          >
+            Huỷ
+          </Button>
+          <Button size="sm" onClick={handleSavePlugin} disabled={!canSave}>
+            Lưu
+          </Button>
         </div>
-      )}
-
-      {editingPlugin?.type === "mcp" && (
-        <>
-          <div className="flex items-center gap-3">
-            <Label className="text-xs w-20 flex-shrink-0">Command</Label>
-            <Input
-              value={editingPlugin?.command || ""}
-              onChange={(e) =>
-                setEditingPlugin((prev) =>
-                  prev ? { ...prev, command: e.target.value } : null,
-                )
-              }
-              placeholder="node, python, npx..."
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <Label className="text-xs w-20 flex-shrink-0">Args</Label>
-            <Input
-              value={editArgs}
-              onChange={(e) => setEditArgs(e.target.value)}
-              placeholder="-y @modelcontextprotocol/server-sqlite --db /path/to/db"
-              className="h-8 text-sm font-mono"
-            />
-          </div>
-        </>
-      )}
-
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {editingPlugin?.type === "skill"
-            ? "Nội dung skill (instructions)"
-            : "Instructions bổ sung (nếu có)"}
-        </Label>
-        <Textarea
-          value={editingPlugin?.prompt || ""}
-          onChange={(e) =>
-            setEditingPlugin((prev) =>
-              prev ? { ...prev, prompt: e.target.value } : null,
-            )
-          }
-          placeholder={
-            editingPlugin?.type === "skill"
-              ? "Viết instructions chi tiết để agent biết cách thực hiện skill này..."
-              : "Hướng dẫn thêm cho agent khi dùng MCP tool này..."
-          }
-          rows={6}
-          className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-y font-mono focus:outline-none focus:ring-1 focus:ring-ring"
-        />
       </div>
-      <div className="flex gap-2 justify-end pt-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setEditingPlugin(null)}
-        >
-          Huỷ
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSavePlugin}
-          disabled={!editingPlugin?.name.trim()}
-        >
-          Lưu
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -606,54 +659,98 @@ export default function SettingsPanel({ onClose }: Props) {
 
             {/* ── Tab: Plugins ── */}
             <TabsContent value="plugins">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Quản lý Plugins</h3>
-                  </div>
-                  <Button
+              <Tabs
+                value={pluginTab}
+                onValueChange={(v) => {
+                  setPluginTab(v);
+                  setEditingPlugin(null);
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="skills">
+                      <Zap size={13} className="mr-1" /> Skills
+                      <Badge
+                        variant="secondary"
+                        className="ml-1.5 text-[10px] h-4 px-1"
+                      >
+                        {skills.length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="mcp">
+                      <Server size={13} className="mr-1" /> MCP Servers
+                      <Badge
+                        variant="secondary"
+                        className="ml-1.5 text-[10px] h-4 px-1"
+                      >
+                        {mcps.length}
+                      </Badge>
+                    </TabsTrigger>
+                  </TabsList>
+                  {/* <Button
                     variant="ghost"
                     size="xs"
                     className="text-muted-foreground"
-                    onClick={() => window.api.openPluginsDir()}
+                    onClick={() =>
+                      pluginTab === "skills"
+                        ? window.api.openSkillsDir()
+                        : window.api.openMcpDir()
+                    }
                   >
                     <FolderOpen size={13} className="mr-1" /> Mở thư mục
-                  </Button>
+                  </Button> */}
                 </div>
 
-                {/* ── Skills Section ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b pb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Zap size={14} className="text-primary" />
-                      <span className="text-sm font-medium">Skills</span>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] h-4 px-1"
-                      >
-                        {plugins.filter((p) => p.type === "skill").length}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="text-primary h-7"
-                      onClick={() =>
-                        openEditForm({ ...EMPTY_SKILL, id: "" }, true)
-                      }
-                    >
-                      <Plus size={13} className="mr-1" /> Thêm
-                    </Button>
-                  </div>
+                {/* ── Skills Tab ── */}
+                <TabsContent value="skills">
                   <div className="space-y-2">
-                    {plugins.filter((p) => p.type === "skill").length === 0 && (
-                      <p className="text-xs text-muted-foreground italic py-1">
-                        Chưa có skill nào.
-                      </p>
-                    )}
-                    {plugins
-                      .filter((p) => p.type === "skill")
-                      .map((p) => (
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search
+                          size={13}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                        <Input
+                          value={skillSearch}
+                          onChange={(e) => setSkillSearch(e.target.value)}
+                          placeholder="Tìm kiếm..."
+                          className="h-7 pl-7 text-xs"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-primary h-7 flex-shrink-0"
+                        onClick={() =>
+                          openEditForm({ ...EMPTY_SKILL, id: "" }, true)
+                        }
+                      >
+                        <Plus size={13} className="mr-1" /> Thêm
+                      </Button>
+                    </div>
+                    {editingPlugin &&
+                      isSkill(editingPlugin) &&
+                      renderPluginForm()}
+                    {(() => {
+                      const filtered = skills.filter(
+                        (p) =>
+                          skillSearch === "" ||
+                          p.name
+                            .toLowerCase()
+                            .includes(skillSearch.toLowerCase()) ||
+                          p.id
+                            .toLowerCase()
+                            .includes(skillSearch.toLowerCase()),
+                      );
+                      if (filtered.length === 0)
+                        return (
+                          <p className="text-xs text-muted-foreground italic py-1">
+                            {skillSearch
+                              ? "Không tìm thấy skill phù hợp."
+                              : "Chưa có skill nào."}
+                          </p>
+                        );
+                      return filtered.map((p) => (
                         <div
                           key={p.id}
                           className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors"
@@ -692,56 +789,81 @@ export default function SettingsPanel({ onClose }: Props) {
                             </p>
                           )}
                         </div>
-                      ))}
+                      ));
+                    })()}
                   </div>
-                  {editingPlugin?.type === "skill" && renderPluginForm()}
-                </div>
+                </TabsContent>
 
-                {/* ── MCP Section ── */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between border-b pb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Server size={14} className="text-primary" />
-                      <span className="text-sm font-medium">MCP Servers</span>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] h-4 px-1"
-                      >
-                        {plugins.filter((p) => p.type === "mcp").length}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="text-primary h-7"
-                      onClick={() =>
-                        openEditForm({ ...EMPTY_MCP, id: "" }, true)
-                      }
-                    >
-                      <Plus size={13} className="mr-1" /> Thêm
-                    </Button>
-                  </div>
+                {/* ── MCP Tab ── */}
+                <TabsContent value="mcp">
                   <div className="space-y-2">
-                    {plugins.filter((p) => p.type === "mcp").length === 0 && (
-                      <p className="text-xs text-muted-foreground italic py-1">
-                        Chưa có MCP server nào.
-                      </p>
-                    )}
-                    {plugins
-                      .filter((p) => p.type === "mcp")
-                      .map((p) => (
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search
+                          size={13}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                        <Input
+                          value={mcpSearch}
+                          onChange={(e) => setMcpSearch(e.target.value)}
+                          placeholder="Tìm kiếm..."
+                          className="h-7 pl-7 text-xs"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-primary h-7 flex-shrink-0"
+                        onClick={() =>
+                          openEditForm({ ...EMPTY_MCP, id: "" }, true)
+                        }
+                      >
+                        <Plus size={13} className="mr-1" /> Thêm
+                      </Button>
+                    </div>
+                    {editingPlugin &&
+                      !isSkill(editingPlugin) &&
+                      renderPluginForm()}
+                    {(() => {
+                      const filtered = mcps.filter(
+                        (p) =>
+                          mcpSearch === "" ||
+                          p.id
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()) ||
+                          (p.url ?? "")
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()) ||
+                          (p.command ?? "")
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()),
+                      );
+                      if (filtered.length === 0)
+                        return (
+                          <p className="text-xs text-muted-foreground italic py-1">
+                            {mcpSearch
+                              ? "Không tìm thấy MCP server phù hợp."
+                              : "Chưa có MCP server nào."}
+                          </p>
+                        );
+                      return filtered.map((p) => (
                         <div
                           key={p.id}
                           className="border p-3 space-y-1 bg-background/50 hover:bg-muted/30 transition-colors"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-sm truncate">
-                                {p.name}
+                              <span className="font-medium text-sm font-mono truncate">
+                                {p.id}
                               </span>
-                              <span className="font-mono text-[10px] text-muted-foreground">
-                                /{p.id}
-                              </span>
+                              {(p.command || p.url) && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-mono font-normal flex-shrink-0 max-w-[160px] truncate"
+                                >
+                                  {p.url ?? p.command}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex gap-1 flex-shrink-0">
                               <Button
@@ -762,25 +884,12 @@ export default function SettingsPanel({ onClose }: Props) {
                               </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] font-mono font-normal flex-shrink-0"
-                            >
-                              {p.command}
-                            </Badge>
-                            {p.description && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {p.description}
-                              </p>
-                            )}
-                          </div>
                         </div>
-                      ))}
+                      ));
+                    })()}
                   </div>
-                  {editingPlugin?.type === "mcp" && renderPluginForm()}
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             {/* ── Tab: Support ── */}

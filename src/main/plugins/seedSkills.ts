@@ -15,7 +15,7 @@ export function seedSkills(): void {
 
   if (!fs.existsSync(sourceDir)) return
 
-  const destDir = path.join(PluginLoader.pluginDir(), 'skills')
+  const destDir = PluginLoader.skillsDir()
   fs.mkdirSync(destDir, { recursive: true })
 
   for (const file of fs.readdirSync(sourceDir)) {

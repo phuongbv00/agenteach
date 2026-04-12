@@ -53,15 +53,26 @@ export async function runAgent(
 
   const memory = MemoryStore.load();
   const systemPrompt = buildSystemPrompt(memory, workspace);
+  console.log("System Prompt:", systemPrompt);
 
   const index = getWorkspaceIndex(workspace.id, workspace.path);
 
   const { tools: timeTools, meta: timeMeta } = createTimeTools();
-  const { tools: fileTools, meta: fileMeta } = createFileTools(workspace, win, index, sessionId);
+  const { tools: fileTools, meta: fileMeta } = createFileTools(
+    workspace,
+    win,
+    index,
+    sessionId,
+  );
   const { tools: memoryTools, meta: memoryMeta } = createMemoryTools(win);
   const { tools: pluginTools, meta: pluginMeta } = createPluginTools();
 
-  const allMeta: ToolsMetaMap = { ...fileMeta, ...memoryMeta, ...pluginMeta, ...timeMeta };
+  const allMeta: ToolsMetaMap = {
+    ...fileMeta,
+    ...memoryMeta,
+    ...pluginMeta,
+    ...timeMeta,
+  };
 
   const agent = new ToolLoopAgent({
     model: createModel(model ?? config.selectedModel),
