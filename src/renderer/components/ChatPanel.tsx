@@ -36,9 +36,9 @@ export default function ChatPanel() {
     toMessages,
     toStoredItems,
   } = useChatStore();
-  const { activeWorkspace, activeSessionId } = useAppStore();
+  const { activeWorkspace, activeSessionId, config, setConfig } = useAppStore();
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
+  const selectedModel = config?.selectedModel ?? "";
   const [models, setModels] = useState<string[]>([]);
   const [, setFileProgress] = useState<{
     fileName: string;
@@ -48,13 +48,12 @@ export default function ChatPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    window.api.getConfig().then((c) => setSelectedModel(c.selectedModel ?? ""));
     window.api.listModels().then(setModels);
-  }, []);
+  }, [config?.activeProviderId]);
 
   const handleSelectModel = async (model: string) => {
     await window.api.selectModel(model);
-    setSelectedModel(model);
+    setConfig(await window.api.getConfig());
   };
 
   useEffect(() => {

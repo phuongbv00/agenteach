@@ -395,7 +395,7 @@ export default function SetupWizard({ onComplete }: Props) {
             </div>
           )}
 
-          {/* ── Step 3: Giới thiệu ── */}
+          {/* ── Step 2: Hồ sơ ── */}
           {step === "profile" && (
             <div className="space-y-5">
               <div>
@@ -454,7 +454,7 @@ export default function SetupWizard({ onComplete }: Props) {
             </div>
           )}
 
-          {/* ── Step 4: Workspace ── */}
+          {/* ── Step 3: Workspace ── */}
           {step === "workspace" && (
             <div className="space-y-5">
               <div>

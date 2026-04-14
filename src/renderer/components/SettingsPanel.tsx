@@ -94,6 +94,8 @@ export default function SettingsPanel({ onClose }: Props) {
   );
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<"ok" | "fail" | null>(null);
+  const [modelSaving, setModelSaving] = useState(false);
+  const [modelSaved, setModelSaved] = useState(false);
 
   // ── Memory state ────────────────────────────────────────────
   const [memory, setMemory] = useState<string>("");
@@ -240,13 +242,25 @@ export default function SettingsPanel({ onClose }: Props) {
     if (active) {
       const list = await window.api.listProviderModels(active);
       setProviderModels(list);
+      // Auto-select first model of the new provider
+      if (list.length > 0) {
+        setSelectedModel(list[0]);
+      }
     }
   };
 
-  const handleSelectModel = async (model: string) => {
+  const handleSelectModel = (model: string) => {
     setSelectedModel(model);
-    await window.api.selectModel(model);
+    setModelSaved(false);
+  };
+
+  const handleSaveModel = async () => {
+    setModelSaving(true);
+    await window.api.selectModel(selectedModel);
     setConfig(await window.api.getConfig());
+    setModelSaving(false);
+    setModelSaved(true);
+    setTimeout(() => setModelSaved(false), 2000);
   };
 
   // ── Memory save ──────────────────────────────────────────────
@@ -979,6 +993,19 @@ export default function SettingsPanel({ onClose }: Props) {
           <Button variant="outline" onClick={onClose}>
             Đóng
           </Button>
+          {tab === "connection" && selectedModel && (
+            <Button onClick={handleSaveModel} disabled={modelSaving}>
+              {modelSaved ? (
+                <span className="flex items-center gap-1">
+                  <Check size={14} /> Đã lưu
+                </span>
+              ) : modelSaving ? (
+                "Đang lưu..."
+              ) : (
+                "Lưu"
+              )}
+            </Button>
+          )}
           {tab === "memory" && memory !== null && (
             <Button onClick={handleSaveMemory} disabled={memSaving}>
               {memSaved ? (
