@@ -1,3 +1,4 @@
+import type { ModelMessage } from "ai"
 import { getDb } from "../db"
 import { generateId } from "../utils/generateId"
 
@@ -9,18 +10,6 @@ export interface Session {
   updatedAt: number
 }
 
-export type StoredChatItem =
-  | { type: "user_message"; content: string }
-  | { type: "assistant_message"; thinking?: string; content: string }
-  | { type: "reasoning_block"; content: string }
-  | {
-      type: "tool_call"
-      toolName: string
-      label: string
-      args: Record<string, unknown>
-      result: string
-    }
-
 function rowToSession(row: Record<string, unknown>): Session {
   return {
     id: row.id as string,
@@ -28,30 +17,6 @@ function rowToSession(row: Record<string, unknown>): Session {
     name: row.name as string,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
-  }
-}
-
-function rowToItem(row: Record<string, unknown>): StoredChatItem {
-  const type = row.type as string
-  if (type === "user_message") {
-    return { type: "user_message", content: row.content as string }
-  }
-  if (type === "assistant_message") {
-    return {
-      type: "assistant_message",
-      content: row.content as string,
-      ...(row.thinking ? { thinking: row.thinking as string } : {}),
-    }
-  }
-  if (type === "reasoning_block") {
-    return { type: "reasoning_block", content: row.content as string }
-  }
-  return {
-    type: "tool_call",
-    toolName: row.tool_name as string,
-    label: row.label as string,
-    args: JSON.parse((row.args as string) ?? "{}"),
-    result: (row.result as string) ?? "",
   }
 }
 
@@ -121,93 +86,62 @@ export const SessionStore = {
   async loadMessages(
     workspaceId: string,
     sessionId: string,
-  ): Promise<StoredChatItem[]> {
+  ): Promise<ModelMessage[]> {
     const db = getDb()
     const rows = db
       .prepare(
-        "SELECT * FROM messages WHERE session_id = ? AND workspace_id = ? ORDER BY position ASC",
+        "SELECT role, content FROM messages WHERE session_id = ? AND workspace_id = ? ORDER BY position ASC",
       )
-      .all(sessionId, workspaceId) as Record<string, unknown>[]
-    return rows.map(rowToItem)
+      .all(sessionId, workspaceId) as Array<{ role: string; content: string }>
+    return rows.map((row) => ({
+      role: row.role,
+      content: JSON.parse(row.content),
+    })) as ModelMessage[]
   },
 
-  async saveMessages(
+  async appendMessages(
     workspaceId: string,
     sessionId: string,
-    messages: StoredChatItem[],
+    messages: ModelMessage[],
+    fromPosition: number,
   ): Promise<void> {
+    if (messages.length === 0) return
     const db = getDb()
 
-    // Auto-name from first user message
+    // Auto-name from first user message in this batch if session still has default name
+    const firstUser = messages.find((m) => m.role === "user")
     let autoName: string | null = null
-    const firstUser = messages.find(
-      (m) => m.type === "user_message",
-    ) as Extract<StoredChatItem, { type: "user_message" }> | undefined
-    if (firstUser) {
+    if (firstUser && typeof firstUser.content === "string") {
       autoName =
         firstUser.content.slice(0, 40) +
         (firstUser.content.length > 40 ? "..." : "")
     }
 
-    // Check current session name to conditionally auto-rename
-    const sessionRows = db
-      .prepare("SELECT name FROM sessions WHERE id = ?")
-      .all(sessionId) as Record<string, unknown>[]
-    const currentName =
-      sessionRows.length > 0
-        ? (sessionRows[0].name as string | null)
-        : null
-    const newName =
-      autoName && currentName === "Phiên mới"
-        ? autoName
-        : (currentName ?? "Phiên mới")
-
     db.exec("BEGIN")
     try {
-      db.prepare(
-        "DELETE FROM messages WHERE session_id = ? AND workspace_id = ?",
-      ).run(sessionId, workspaceId)
-
+      const stmt = db.prepare(
+        "INSERT INTO messages (session_id, workspace_id, position, role, content) VALUES (?, ?, ?, ?, ?)",
+      )
       for (let i = 0; i < messages.length; i++) {
-        const item = messages[i]
-        if (item.type === "user_message") {
-          db.prepare(
-            "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
-          ).run(sessionId, workspaceId, i, "user_message", item.content)
-        } else if (item.type === "assistant_message") {
-          db.prepare(
-            "INSERT INTO messages (session_id, workspace_id, position, type, content, thinking) VALUES (?, ?, ?, ?, ?, ?)",
-          ).run(
-            sessionId,
-            workspaceId,
-            i,
-            "assistant_message",
-            item.content,
-            item.thinking ?? null,
-          )
-        } else if (item.type === "reasoning_block") {
-          db.prepare(
-            "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
-          ).run(sessionId, workspaceId, i, "reasoning_block", item.content)
-        } else if (item.type === "tool_call") {
-          db.prepare(
-            "INSERT INTO messages (session_id, workspace_id, position, type, tool_name, label, args, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          ).run(
-            sessionId,
-            workspaceId,
-            i,
-            "tool_call",
-            item.toolName,
-            item.label,
-            JSON.stringify(item.args),
-            item.result,
-          )
-        }
+        stmt.run(
+          sessionId,
+          workspaceId,
+          fromPosition + i,
+          messages[i].role,
+          JSON.stringify(messages[i].content),
+        )
       }
 
-      db.prepare(
-        "UPDATE sessions SET updated_at = ?, name = ? WHERE id = ?",
-      ).run(Date.now(), newName, sessionId)
+      if (autoName) {
+        db.prepare(
+          "UPDATE sessions SET updated_at = ?, name = CASE WHEN name = ? THEN ? ELSE name END WHERE id = ?",
+        ).run(Date.now(), "Phiên mới", autoName, sessionId)
+      } else {
+        db.prepare("UPDATE sessions SET updated_at = ? WHERE id = ?").run(
+          Date.now(),
+          sessionId,
+        )
+      }
 
       db.exec("COMMIT")
     } catch (e) {

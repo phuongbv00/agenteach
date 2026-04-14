@@ -103,16 +103,18 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("session:delete", workspaceId, sessionId),
   loadSessionMessages: (workspaceId: string, sessionId: string) =>
     ipcRenderer.invoke("session:loadMessages", workspaceId, sessionId),
-  saveSessionMessages: (
+  appendSessionMessages: (
     workspaceId: string,
     sessionId: string,
     messages: unknown[],
+    fromPosition: number,
   ) =>
     ipcRenderer.invoke(
-      "session:saveMessages",
+      "session:appendMessages",
       workspaceId,
       sessionId,
       messages,
+      fromPosition,
     ),
 
   // Memory

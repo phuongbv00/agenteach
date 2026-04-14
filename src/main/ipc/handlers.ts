@@ -12,7 +12,7 @@ import { PluginLoader } from "../plugins/PluginLoader";
 import { SessionStore } from "../sessions/SessionStore";
 import { ArtifactStore } from "../sessions/ArtifactStore";
 import { runAgent, cancelAgent } from "../agent/Orchestrator";
-import type { ChatMessage } from "../agent/Orchestrator";
+import { resolveToolLabel } from "../agent/tools/labels";
 
 export function registerHandlers(win: BrowserWindow): void {
   // System
@@ -81,7 +81,7 @@ export function registerHandlers(win: BrowserWindow): void {
   // Agent
   ipcMain.handle(
     "agent:sendMessage",
-    async (_e, messages: ChatMessage[], sessionId?: string, model?: string) => {
+    async (_e, messages: import("ai").ModelMessage[], sessionId?: string, model?: string) => {
       await runAgent(messages, win, sessionId, model);
     },
   );
@@ -140,19 +140,32 @@ export function registerHandlers(win: BrowserWindow): void {
   );
   ipcMain.handle(
     "session:loadMessages",
-    (_e, workspaceId: string, sessionId: string) => {
-      return SessionStore.loadMessages(workspaceId, sessionId);
+    async (_e, workspaceId: string, sessionId: string) => {
+      const messages = await SessionStore.loadMessages(workspaceId, sessionId);
+      return messages.map((msg) => {
+        if (msg.role !== "assistant" || typeof msg.content === "string") return msg;
+        const content = msg.content.map((part) => {
+          if (part.type !== "tool-call") return part;
+          const input = (part.input ?? {}) as Record<string, unknown>;
+          return {
+            ...part,
+            providerOptions: { agenteach: { label: resolveToolLabel(part.toolName, input) } },
+          };
+        });
+        return { ...msg, content };
+      });
     },
   );
   ipcMain.handle(
-    "session:saveMessages",
+    "session:appendMessages",
     async (
       _e,
       workspaceId: string,
       sessionId: string,
-      items: Parameters<typeof SessionStore.saveMessages>[2],
+      messages: Parameters<typeof SessionStore.appendMessages>[2],
+      fromPosition: number,
     ) => {
-      await SessionStore.saveMessages(workspaceId, sessionId, items);
+      await SessionStore.appendMessages(workspaceId, sessionId, messages, fromPosition);
     },
   );
 

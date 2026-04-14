@@ -5,8 +5,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import type { ReasoningItem, ToolCallItem } from "../stores/chatStore";
-import type { ChatMessage } from "../types/api";
+import type { MessageItem as ChatMessage, ReasoningItem, ToolCallItem } from "../stores/chatStore";
 import { normalizeMathDelimiters } from "../lib/utils";
 
 // ── Thinking parser (for StreamingBubble only) ───────────────────────────────

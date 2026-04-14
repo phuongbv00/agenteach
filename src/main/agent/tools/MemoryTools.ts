@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MemoryStore } from "../../memory/MemoryStore";
 import { BrowserWindow } from "electron";
 import type { ToolsMetaMap } from "./meta";
+import { staticLabels } from "./labels";
 
 const memoryInputSchema = z.object({
   content: z
@@ -27,7 +28,7 @@ export function createMemoryTools(win?: BrowserWindow) {
   };
 
   const meta: ToolsMetaMap = {
-    memory_update: { label: () => "Ghi nhớ thông tin" },
+    memory_update: { label: staticLabels.memory_update },
   };
 
   return { tools, meta };

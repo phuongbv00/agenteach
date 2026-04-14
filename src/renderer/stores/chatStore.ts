@@ -1,8 +1,15 @@
-import { create } from 'zustand';
-import type { ChatMessage, StoredChatItem } from '../types/api';
+import { create } from "zustand";
+import type {
+  ModelMessage,
+  TextPart,
+  FilePart,
+  ReasoningUIPart,
+  ToolCallPart,
+  ToolResultPart,
+} from "ai";
 
 export interface ToolCallItem {
-  type: 'tool_call';
+  type: "tool_call";
   id: string;
   toolName: string;
   label: string;
@@ -11,14 +18,14 @@ export interface ToolCallItem {
 }
 
 export interface ReasoningItem {
-  type: 'reasoning';
+  type: "reasoning";
   id: string;
   content: string;
 }
 
 export interface MessageItem {
-  type: 'message';
-  role: 'user' | 'assistant';
+  type: "message";
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -27,10 +34,10 @@ export type ChatItem = MessageItem | ToolCallItem | ReasoningItem;
 // Extract <think>...</think> from raw streaming content
 function extractThinking(raw: string): { thinking: string; text: string } {
   const re = /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi;
-  let thinking = '';
+  let thinking = "";
   const text = raw.replace(re, (_, inner) => {
-    thinking += (thinking ? '\n\n' : '') + inner.trim();
-    return '';
+    thinking += (thinking ? "\n\n" : "") + inner.trim();
+    return "";
   });
   return { thinking: thinking.trim(), text: text.trim() };
 }
@@ -48,36 +55,43 @@ interface ChatState {
   reasoningContent: string;
   pendingItems: ChatItem[];
   pendingToolCall: PendingToolCall | null;
+  savedMessageCount: number; // # of ModelMessages already persisted in DB
 
-  // For LLM: only user/assistant text (no tool_calls, no thinking markup)
-  toMessages(): ChatMessage[];
-  // For persistence: full structured items
-  toStoredItems(): StoredChatItem[];
+  // For LLM: full conversation history including tool calls and reasoning
+  toMessages(): ModelMessage[];
 
   addUserMessage(content: string): void;
   appendToken(token: string): void;
   appendReasoning(text: string): void;
   addToolCallStart(event: PendingToolCall): void;
-  addToolCall(event: Omit<ToolCallItem, 'type' | 'id'>): void;
+  addToolCall(event: Omit<ToolCallItem, "type" | "id">): void;
   finalizeAssistantMessage(): void;
   setStreaming(v: boolean): void;
-  loadItems(items: StoredChatItem[]): void;
+  loadItems(messages: ModelMessage[]): void;
+  markSaved(count: number): void;
   clear(): void;
 }
 
 let _toolCallCounter = 0;
 let _reasoningCounter = 0;
 
-function snapshotItems(streamingContent: string, reasoningContent: string): ChatItem[] {
+function snapshotItems(
+  streamingContent: string,
+  reasoningContent: string,
+): ChatItem[] {
   const result: ChatItem[] = [];
   const { thinking: tagThinking, text } = extractThinking(streamingContent);
   const reasoning = reasoningContent.trim() || tagThinking;
   if (reasoning) {
-    result.push({ type: 'reasoning', id: `r-${++_reasoningCounter}`, content: reasoning });
+    result.push({
+      type: "reasoning",
+      id: `r-${++_reasoningCounter}`,
+      content: reasoning,
+    });
   }
-  const content = text.trim() || (!reasoning ? streamingContent.trim() : '');
+  const content = text.trim() || (!reasoning ? streamingContent.trim() : "");
   if (content) {
-    result.push({ type: 'message', role: 'assistant', content });
+    result.push({ type: "message", role: "assistant", content });
   }
   return result;
 }
@@ -85,85 +99,264 @@ function snapshotItems(streamingContent: string, reasoningContent: string): Chat
 export const useChatStore = create<ChatState>((set, get) => ({
   items: [],
   isStreaming: false,
-  streamingContent: '',
-  reasoningContent: '',
+  streamingContent: "",
+  reasoningContent: "",
   pendingItems: [],
   pendingToolCall: null,
+  savedMessageCount: 0,
 
-  toMessages(): ChatMessage[] {
-    return get().items
-      .filter((i): i is MessageItem => i.type === 'message')
-      .map(({ role, content }) => ({ role, content }));
-  },
+  // TODO: Replace ChatItem type with UIMessage type
+  toMessages(): ModelMessage[] {
+    const result: ModelMessage[] = [];
+    const items = get().items;
+    let i = 0;
+    let tcCounter = 0;
 
-  toStoredItems(): StoredChatItem[] {
-    return get().items.map((item): StoredChatItem => {
-      if (item.type === 'tool_call') {
-        return { type: 'tool_call', toolName: item.toolName, label: item.label, args: item.args, result: item.result };
+    while (i < items.length) {
+      const item = items[i];
+
+      if (item.type === "message" && item.role === "user") {
+        result.push({ role: "user", content: item.content });
+        i++;
+        continue;
       }
-      if (item.type === 'reasoning') {
-        return { type: 'reasoning_block', content: item.content };
+
+      // Collect a step: reasoning* + assistant? + tool_call?
+      if (
+        item.type === "reasoning" ||
+        item.type === "message" ||
+        item.type === "tool_call"
+      ) {
+        const parts: Array<TextPart | FilePart | ToolCallPart> = [];
+
+        // Skip reasoning blocks — display-only, not sent to LLM
+        while (i < items.length && items[i].type === "reasoning") {
+          i++;
+        }
+
+        // Collect assistant text
+        if (
+          i < items.length &&
+          items[i].type === "message" &&
+          (items[i] as MessageItem).role === "assistant"
+        ) {
+          const msg = items[i] as MessageItem;
+          if (msg.content) parts.push({ type: "text", text: msg.content });
+          i++;
+        }
+
+        // Check for following tool call
+        if (i < items.length && items[i].type === "tool_call") {
+          const tc = items[i] as ToolCallItem;
+          const tcId = `hist-${++tcCounter}`;
+          parts.push({
+            type: "tool-call",
+            toolCallId: tcId,
+            toolName: tc.toolName,
+            input: tc.args,
+          });
+          result.push({ role: "assistant", content: parts });
+          result.push({
+            role: "tool",
+            content: [
+              {
+                type: "tool-result",
+                toolCallId: tcId,
+                toolName: tc.toolName,
+                output: { type: "text", value: tc.result },
+              },
+            ],
+          });
+          i++;
+        } else if (parts.length > 0) {
+          result.push({ role: "assistant", content: parts });
+        }
+        continue;
       }
-      return item.role === 'user'
-        ? { type: 'user_message', content: item.content }
-        : { type: 'assistant_message', content: item.content };
-    });
+
+      i++;
+    }
+
+    console.log("msg", result);
+
+    return result;
   },
 
   addUserMessage: (content) =>
     set((s) => ({
-      items: [...s.items, { type: 'message', role: 'user', content }],
-      streamingContent: '',
-      reasoningContent: '',
+      items: [...s.items, { type: "message", role: "user", content }],
+      streamingContent: "",
+      reasoningContent: "",
       pendingItems: [],
     })),
 
   appendToken: (token) =>
-    set((s) => s.isStreaming ? { streamingContent: s.streamingContent + token } : s),
+    set((s) =>
+      s.isStreaming ? { streamingContent: s.streamingContent + token } : s,
+    ),
 
   appendReasoning: (text) =>
-    set((s) => s.isStreaming ? { reasoningContent: s.reasoningContent + text } : s),
+    set((s) =>
+      s.isStreaming ? { reasoningContent: s.reasoningContent + text } : s,
+    ),
 
   addToolCallStart: (event) => {
     set((s) => {
       if (!s.isStreaming) return s;
-      const newPending: ChatItem[] = [...s.pendingItems, ...snapshotItems(s.streamingContent, s.reasoningContent)];
-      return { pendingItems: newPending, streamingContent: '', reasoningContent: '', pendingToolCall: event };
+      const newPending: ChatItem[] = [
+        ...s.pendingItems,
+        ...snapshotItems(s.streamingContent, s.reasoningContent),
+      ];
+      return {
+        pendingItems: newPending,
+        streamingContent: "",
+        reasoningContent: "",
+        pendingToolCall: event,
+      };
     });
   },
 
   addToolCall: (event) => {
-    const toolItem: ToolCallItem = { type: 'tool_call', id: `tc-${++_toolCallCounter}`, ...event };
+    const toolItem: ToolCallItem = {
+      type: "tool_call",
+      id: `tc-${++_toolCallCounter}`,
+      ...event,
+    };
     set((s) => {
       if (!s.isStreaming) return s;
-      const newPending: ChatItem[] = [...s.pendingItems, ...snapshotItems(s.streamingContent, s.reasoningContent), toolItem];
-      return { pendingItems: newPending, streamingContent: '', reasoningContent: '', pendingToolCall: null };
+      const newPending: ChatItem[] = [
+        ...s.pendingItems,
+        ...snapshotItems(s.streamingContent, s.reasoningContent),
+        toolItem,
+      ];
+      return {
+        pendingItems: newPending,
+        streamingContent: "",
+        reasoningContent: "",
+        pendingToolCall: null,
+      };
     });
   },
 
   finalizeAssistantMessage: () => {
     const { streamingContent, reasoningContent, items, pendingItems } = get();
-    const newItems: ChatItem[] = [...items, ...pendingItems, ...snapshotItems(streamingContent, reasoningContent)];
-    set({ items: newItems, isStreaming: false, streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null });
+    const newItems: ChatItem[] = [
+      ...items,
+      ...pendingItems,
+      ...snapshotItems(streamingContent, reasoningContent),
+    ];
+    set({
+      items: newItems,
+      isStreaming: false,
+      streamingContent: "",
+      reasoningContent: "",
+      pendingItems: [],
+      pendingToolCall: null,
+    });
   },
 
   setStreaming: (v) => set({ isStreaming: v }),
 
-  loadItems: (storedItems) => {
-    const chatItems: ChatItem[] = storedItems.map((item): ChatItem => {
-      if (item.type === 'tool_call') {
-        return { type: 'tool_call', id: `tc-${++_toolCallCounter}`, ...item };
+  markSaved: (count) => set({ savedMessageCount: count }),
+
+  // TODO: Replace ChatItem type with UIMessage type
+  loadItems: (messages) => {
+    const chatItems: ChatItem[] = [];
+    let i = 0;
+
+    while (i < messages.length) {
+      const msg = messages[i];
+
+      if (msg.role === "user") {
+        chatItems.push({
+          type: "message",
+          role: "user",
+          content: typeof msg.content === "string" ? msg.content : "",
+        });
+        i++;
+        continue;
       }
-      if (item.type === 'reasoning_block') {
-        return { type: 'reasoning', id: `r-${++_reasoningCounter}`, content: item.content };
+
+      if (msg.role === "assistant") {
+        const content = msg.content;
+
+        // AssistantContent can be a plain string
+        if (typeof content === "string") {
+          if (content)
+            chatItems.push({ type: "message", role: "assistant", content });
+          i++;
+          continue;
+        }
+
+        const toolCallParts: Array<ToolCallPart> = [];
+        for (const part of content) {
+          if (part.type === "reasoning") {
+            chatItems.push({
+              type: "reasoning",
+              id: `r-${++_reasoningCounter}`,
+              content: (part as ReasoningUIPart).text,
+            });
+          } else if (part.type === "text") {
+            if (part.text)
+              chatItems.push({
+                type: "message",
+                role: "assistant",
+                content: part.text,
+              });
+          } else if (part.type === "tool-call") {
+            toolCallParts.push(part as ToolCallPart);
+          }
+        }
+
+        if (toolCallParts.length > 0) {
+          const nextMsg = messages[i + 1];
+          const toolResults = nextMsg?.role === "tool" ? nextMsg.content : [];
+          for (const tcPart of toolCallParts) {
+            const resultPart = toolResults.find(
+              (r): r is ToolResultPart =>
+                r.type === "tool-result" && r.toolCallId === tcPart.toolCallId,
+            );
+            chatItems.push({
+              type: "tool_call",
+              id: `tc-${++_toolCallCounter}`,
+              toolName: tcPart.toolName,
+              label:
+                (tcPart.providerOptions?.["agenteach"]?.["label"] as
+                  | string
+                  | undefined) ?? tcPart.toolName,
+              args: tcPart.input as Record<string, unknown>,
+              result: resultPart ? String(resultPart.output) : "",
+            });
+          }
+          i += nextMsg?.role === "tool" ? 2 : 1;
+        } else {
+          i++;
+        }
+        continue;
       }
-      if (item.type === 'user_message') {
-        return { type: 'message', role: 'user', content: item.content };
-      }
-      return { type: 'message', role: 'assistant', content: item.content };
+
+      // tool messages are consumed above
+      i++;
+    }
+
+    set({
+      items: chatItems,
+      streamingContent: "",
+      reasoningContent: "",
+      pendingItems: [],
+      isStreaming: false,
+      savedMessageCount: messages.length,
     });
-    set({ items: chatItems, streamingContent: '', reasoningContent: '', pendingItems: [], isStreaming: false });
   },
 
-  clear: () => set({ items: [], streamingContent: '', reasoningContent: '', pendingItems: [], pendingToolCall: null, isStreaming: false }),
+  clear: () =>
+    set({
+      items: [],
+      streamingContent: "",
+      reasoningContent: "",
+      pendingItems: [],
+      pendingToolCall: null,
+      isStreaming: false,
+      savedMessageCount: 0,
+    }),
 }));

@@ -1,4 +1,5 @@
 import { ToolLoopAgent, isLoopFinished } from "ai";
+import type { ModelMessage } from "ai";
 import { BrowserWindow } from "electron";
 import { createModel } from "../llm/LLMClient";
 import { appConfig } from "../config/AppConfig";
@@ -13,10 +14,6 @@ import createTimeTools from "./tools/TimeTools";
 import type { ToolsMetaMap } from "./tools/meta";
 import { defaultSummarize } from "./tools/meta";
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
 
 export interface ToolCallEvent {
   toolName: string;
@@ -28,7 +25,7 @@ export interface ToolCallEvent {
 let currentAbortController: AbortController | null = null;
 
 export async function runAgent(
-  messages: ChatMessage[],
+  messages: ModelMessage[],
   win: BrowserWindow,
   sessionId?: string,
   model?: string,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ChevronDown, FolderOpen, GraduationCap, Plus, Square } from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
+import type { MessageItem } from "../stores/chatStore";
 import { useAppStore } from "../stores/appStore";
 import {
   MessageBubble,
@@ -34,7 +35,8 @@ export default function ChatPanel() {
     finalizeAssistantMessage,
     setStreaming,
     toMessages,
-    toStoredItems,
+    savedMessageCount,
+    markSaved,
   } = useChatStore();
   const { activeWorkspace, activeSessionId, config, setConfig } = useAppStore();
   const [input, setInput] = useState("");
@@ -60,14 +62,19 @@ export default function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items, streamingContent, reasoningContent, pendingItems]);
 
-  // Save session after each completed turn
+  // Append new messages to DB after each completed turn
   useEffect(() => {
     if (!isStreaming && activeWorkspace && activeSessionId && items.length > 0) {
-      window.api.saveSessionMessages(
-        activeWorkspace.id,
-        activeSessionId,
-        toStoredItems(),
-      );
+      const all = toMessages();
+      const newMessages = all.slice(savedMessageCount);
+      if (newMessages.length > 0) {
+        window.api.appendSessionMessages(
+          activeWorkspace.id,
+          activeSessionId,
+          newMessages,
+          savedMessageCount,
+        ).then(() => markSaved(all.length));
+      }
     }
   }, [isStreaming]);
 
@@ -193,7 +200,7 @@ export default function ChatPanel() {
           return (
             <MessageBubble
               key={i}
-              message={{ role: item.role, content: item.content }}
+              message={item as MessageItem}
             />
           );
         })}
@@ -209,7 +216,7 @@ export default function ChatPanel() {
               return (
                 <MessageBubble
                   key={i}
-                  message={{ role: item.role, content: item.content }}
+                  message={item as MessageItem}
                 />
               );
             })}

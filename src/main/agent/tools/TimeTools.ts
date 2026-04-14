@@ -1,11 +1,12 @@
 import { tool, zodSchema } from "ai";
 import { z } from "zod";
 import type { ToolsMetaMap } from "./meta";
+import { staticLabels } from "./labels";
 
 export default function createTimeTools(): { tools: ReturnType<typeof buildTools>; meta: ToolsMetaMap } {
   const tools = buildTools();
   const meta: ToolsMetaMap = {
-    time_now: { label: () => "Lấy ngày hôm nay" },
+    time_now: { label: staticLabels.time_now },
   };
   return { tools, meta };
 }

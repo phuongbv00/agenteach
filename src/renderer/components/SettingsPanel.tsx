@@ -117,7 +117,7 @@ export default function SettingsPanel({ onClose }: Props) {
   const [mcpSearch, setMcpSearch] = useState("");
 
   const reloadPlugins = () => {
-    window.api.listSkills().then(setSkills);
+    window.api.listSkills().then((skills) => { setSkills(skills); });
     window.api.listMcp().then(setMcps);
   };
 

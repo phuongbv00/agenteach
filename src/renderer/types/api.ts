@@ -1,3 +1,5 @@
+import { ModelMessage } from "ai";
+
 export type PermissionScope = "once" | "session" | "always";
 
 export interface HitlRequest {
@@ -57,23 +59,6 @@ export interface AppConfigData {
   setupComplete: boolean;
 }
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export type StoredChatItem =
-  | { type: "user_message"; content: string }
-  | { type: "assistant_message"; content: string }
-  | { type: "reasoning_block"; content: string }
-  | {
-      type: "tool_call";
-      toolName: string;
-      label: string;
-      args: Record<string, unknown>;
-      result: string;
-    };
-
 export interface Artifact {
   id: string;
   sessionId: string;
@@ -108,7 +93,7 @@ declare global {
       updateConfig(patch: Partial<AppConfigData>): Promise<void>;
 
       sendMessage(
-        messages: ChatMessage[],
+        messages: ModelMessage[],
         sessionId?: string,
         model?: string,
       ): Promise<void>;
@@ -154,11 +139,12 @@ declare global {
       loadSessionMessages(
         workspaceId: string,
         sessionId: string,
-      ): Promise<StoredChatItem[]>;
-      saveSessionMessages(
+      ): Promise<ModelMessage[]>;
+      appendSessionMessages(
         workspaceId: string,
         sessionId: string,
-        items: StoredChatItem[],
+        messages: ModelMessage[],
+        fromPosition: number,
       ): Promise<void>;
 
       getMemory: () => Promise<string>;

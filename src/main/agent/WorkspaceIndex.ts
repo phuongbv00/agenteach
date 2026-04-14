@@ -1,9 +1,9 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 export interface IndexEntry {
   name: string;
-  rel: string;      // relative path from workspace root, no trailing slash
+  rel: string; // relative path from workspace root, no trailing slash
   isDir: boolean;
 }
 
@@ -12,13 +12,7 @@ export class WorkspaceIndex {
   private watcher: fs.FSWatcher | null = null;
   private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // macOS APFS: NFD; Windows NTFS: NFC (stores as-is, keyboard input is NFC)
-  private static readonly PATH_NORM: "NFD" | "NFC" =
-    process.platform === "darwin" ? "NFD" : "NFC";
-
-  constructor(private readonly wsPath: string) {
-    this.wsPath = wsPath.normalize(WorkspaceIndex.PATH_NORM);
-  }
+  constructor(private readonly wsPath: string) {}
 
   build(): void {
     this.entries = [];
@@ -34,11 +28,10 @@ export class WorkspaceIndex {
       return;
     }
     for (const e of dirents) {
-      if (e.name.startsWith('.')) continue;
-      const name = e.name.normalize(WorkspaceIndex.PATH_NORM);
-      const full = path.join(dir, name);
+      if (e.name.startsWith(".")) continue;
+      const full = path.join(dir, e.name);
       const rel = path.relative(this.wsPath, full);
-      this.entries.push({ name, rel, isDir: e.isDirectory() });
+      this.entries.push({ name: e.name, rel, isDir: e.isDirectory() });
       if (e.isDirectory()) {
         this._walk(full, depth + 1);
       }
@@ -65,64 +58,52 @@ export class WorkspaceIndex {
     }
   }
 
-  /** Bỏ dấu tiếng Việt để so khớp không dấu (VD: "giao an" → "giao an", "giáo án" → "giao an") */
-  private static stripDiacritics(s: string): string {
-    return s.normalize('NFD').replace(/\p{M}/gu, '')
-  }
-
-  /** Tìm file/folder theo tên (token-based, case-insensitive, hỗ trợ không dấu tiếng Việt).
+  /** Tìm file/folder theo tên (token-based, case-insensitive).
    *  Query được tách thành các từ; tên file được normalize (-, _, . → space).
-   *  Ưu tiên: khớp chính xác (có dấu) > khớp không dấu > khớp một phần có dấu > khớp một phần không dấu. */
+   *  Kết quả gồm: match tất cả token (ưu tiên cao) + match ít nhất 1 token. */
   find(query: string): IndexEntry[] {
-    const normalize = (s: string) => s.normalize('NFC').toLowerCase().replace(/[-_.]/g, ' ');
-    const loose = (s: string) => WorkspaceIndex.stripDiacritics(normalize(s));
-
+    const normalize = (s: string) => s.toLowerCase().replace(/[-_.]/g, " ");
     const tokens = normalize(query).split(/\s+/).filter(Boolean);
-    const looseTokens = loose(query).split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return [];
 
-    const allStrict: IndexEntry[] = [];
-    const allLoose: IndexEntry[] = [];
-    const anyStrict: IndexEntry[] = [];
-    const anyLoose: IndexEntry[] = [];
+    const allMatch: IndexEntry[] = [];
+    const anyMatch: IndexEntry[] = [];
 
     for (const e of this.entries) {
       const norm = normalize(e.name);
-      const looseNorm = loose(e.name);
-      const strictCount = tokens.filter(t => norm.includes(t)).length;
-      const looseCount = looseTokens.filter(t => looseNorm.includes(t)).length;
-
-      if (strictCount === tokens.length) allStrict.push(e);
-      else if (looseCount === looseTokens.length) allLoose.push(e);
-      else if (strictCount > 0) anyStrict.push(e);
-      else if (looseCount > 0) anyLoose.push(e);
+      const matchCount = tokens.filter((t) => norm.includes(t)).length;
+      if (matchCount === tokens.length) allMatch.push(e);
+      else if (matchCount > 0) anyMatch.push(e);
     }
 
-    return [...allStrict, ...allLoose, ...anyStrict, ...anyLoose];
+    return [...allMatch, ...anyMatch];
   }
 
   /** Liệt kê con trực tiếp của một thư mục */
   listDir(dirRel: string): IndexEntry[] {
-    const parentNorm = !dirRel || dirRel === '.' ? '.' : dirRel;
-    return this.entries.filter(e => path.dirname(e.rel) === parentNorm);
+    const parentNorm = !dirRel || dirRel === "." ? "." : dirRel;
+    return this.entries.filter((e) => path.dirname(e.rel) === parentNorm);
   }
 
   /** Liệt kê đệ quy tất cả mục trong một thư mục */
   listRecursive(dirRel: string): IndexEntry[] {
-    if (!dirRel || dirRel === '.') return [...this.entries];
+    if (!dirRel || dirRel === ".") return [...this.entries];
     const prefix = dirRel + path.sep;
-    return this.entries.filter(e => e.rel.startsWith(prefix));
+    return this.entries.filter((e) => e.rel.startsWith(prefix));
   }
 
   /** Lấy tất cả file (không phải thư mục) */
   getFiles(): IndexEntry[] {
-    return this.entries.filter(e => !e.isDir);
+    return this.entries.filter((e) => !e.isDir);
   }
 }
 
 const _indexes = new Map<string, WorkspaceIndex>();
 
-export function getWorkspaceIndex(workspaceId: string, wsPath: string): WorkspaceIndex {
+export function getWorkspaceIndex(
+  workspaceId: string,
+  wsPath: string,
+): WorkspaceIndex {
   let idx = _indexes.get(workspaceId);
   if (!idx) {
     idx = new WorkspaceIndex(wsPath);

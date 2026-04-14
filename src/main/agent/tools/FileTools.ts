@@ -5,6 +5,7 @@ import readline from "readline";
 import { tool, zodSchema } from "ai";
 import { z } from "zod";
 import type { ToolsMetaMap } from "./meta";
+import { staticLabels } from "./labels";
 import { BrowserWindow, ipcMain } from "electron";
 import mammoth from "mammoth";
 import pdf2md from "@opendocsg/pdf2md";
@@ -814,35 +815,26 @@ export function createFileTools(
 
   const meta: ToolsMetaMap = {
     fs_list_dir: {
-      label: (args) => `Xem thư mục: ${args.dir_path ?? "."}`,
+      label: staticLabels.fs_list_dir,
       summarize: (result) => {
         const lines = result.split("\n").filter(Boolean);
         if (lines.length <= 5) return result;
         return `${lines.slice(0, 5).join("\n")}\n... (${lines.length} mục)`;
       },
     },
-    fs_find_files: { label: (args) => `Tìm file: "${args.query ?? ""}"` },
+    fs_find_files: { label: staticLabels.fs_find_files },
     fs_read_file: {
-      label: (args) => `Đọc file: ${args.file_path ?? ""}`,
+      label: staticLabels.fs_read_file,
       summarize: (result) =>
         result.length <= 300
           ? result
           : result.slice(0, 300) + `\n... (${result.length} ký tự)`,
     },
-    fs_write_file: { label: (args) => `Ghi file: ${args.file_path ?? ""}` },
-    fs_search_in_files: { label: (args) => `Tìm kiếm: "${args.query ?? ""}"` },
-    fs_create_markdown: {
-      label: (args) => `Tạo file Markdown: ${args.file_name ?? ""}`,
-      summarize: (result) => result,
-    },
-    fs_create_pdf: {
-      label: (args) => `Tạo file PDF: ${args.file_name ?? ""}`,
-      summarize: (result) => result,
-    },
-    fs_create_docx: {
-      label: (args) => `Tạo file Word: ${args.file_name ?? ""}`,
-      summarize: (result) => result,
-    },
+    fs_write_file: { label: staticLabels.fs_write_file },
+    fs_search_in_files: { label: staticLabels.fs_search_in_files },
+    fs_create_markdown: { label: staticLabels.fs_create_markdown },
+    fs_create_pdf: { label: staticLabels.fs_create_pdf },
+    fs_create_docx: { label: staticLabels.fs_create_docx },
   };
 
   return { tools, meta };
