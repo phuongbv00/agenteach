@@ -21,7 +21,9 @@ services:
       --enable-prefix-caching
       --trust-remote-code
       --enable-auto-tool-choice
+      --reasoning-parser gemma4
       --tool-call-parser gemma4
+      --chat-template examples/tool_chat_template_gemma4.jinja
     deploy:
       resources:
         reservations:
