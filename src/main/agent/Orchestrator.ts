@@ -78,7 +78,6 @@ export async function runAgent(
     model: createModel(model ?? config.selectedModel),
     instructions: systemPrompt,
     tools: { ...fileTools, ...memoryTools, ...pluginTools, ...timeTools },
-    toolChoice: "required",
     stopWhen: isLoopFinished(),
   });
 

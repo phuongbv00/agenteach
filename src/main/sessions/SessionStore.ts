@@ -12,6 +12,7 @@ export interface Session {
 export type StoredChatItem =
   | { type: "user_message"; content: string }
   | { type: "assistant_message"; thinking?: string; content: string }
+  | { type: "reasoning_block"; content: string }
   | {
       type: "tool_call"
       toolName: string
@@ -41,6 +42,9 @@ function rowToItem(row: Record<string, unknown>): StoredChatItem {
       content: row.content as string,
       ...(row.thinking ? { thinking: row.thinking as string } : {}),
     }
+  }
+  if (type === "reasoning_block") {
+    return { type: "reasoning_block", content: row.content as string }
   }
   return {
     type: "tool_call",
@@ -181,6 +185,10 @@ export const SessionStore = {
             item.content,
             item.thinking ?? null,
           )
+        } else if (item.type === "reasoning_block") {
+          db.prepare(
+            "INSERT INTO messages (session_id, workspace_id, position, type, content) VALUES (?, ?, ?, ?, ?)",
+          ).run(sessionId, workspaceId, i, "reasoning_block", item.content)
         } else if (item.type === "tool_call") {
           db.prepare(
             "INSERT INTO messages (session_id, workspace_id, position, type, tool_name, label, args, result) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
