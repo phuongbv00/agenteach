@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, ChevronDown, FolderOpen, GraduationCap, Plus, Square } from "lucide-react";
+import {
+  ArrowUp,
+  ChevronDown,
+  FolderOpen,
+  GraduationCap,
+  Plus,
+  Square,
+} from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
 import type { MessageItem } from "../stores/chatStore";
 import { useAppStore } from "../stores/appStore";
@@ -34,7 +41,7 @@ export default function ChatPanel() {
     addToolCall,
     finalizeAssistantMessage,
     setStreaming,
-    toMessages,
+    toModelMessages,
     savedMessageCount,
     markSaved,
   } = useChatStore();
@@ -64,16 +71,23 @@ export default function ChatPanel() {
 
   // Append new messages to DB after each completed turn
   useEffect(() => {
-    if (!isStreaming && activeWorkspace && activeSessionId && items.length > 0) {
-      const all = toMessages();
+    if (
+      !isStreaming &&
+      activeWorkspace &&
+      activeSessionId &&
+      items.length > 0
+    ) {
+      const all = toModelMessages();
       const newMessages = all.slice(savedMessageCount);
       if (newMessages.length > 0) {
-        window.api.appendSessionMessages(
-          activeWorkspace.id,
-          activeSessionId,
-          newMessages,
-          savedMessageCount,
-        ).then(() => markSaved(all.length));
+        window.api
+          .appendSessionMessages(
+            activeWorkspace.id,
+            activeSessionId,
+            newMessages,
+            savedMessageCount,
+          )
+          .then(() => markSaved(all.length));
       }
     }
   }, [isStreaming]);
@@ -109,9 +123,16 @@ export default function ChatPanel() {
     addUserMessage(content);
     setStreaming(true);
 
-    const allMessages = [...toMessages(), { role: "user" as const, content }];
+    const allMessages = [
+      ...toModelMessages(),
+      { role: "user" as const, content },
+    ];
     window.api
-      .sendMessage(allMessages, activeSessionId ?? undefined, selectedModel || undefined)
+      .sendMessage(
+        allMessages,
+        activeSessionId ?? undefined,
+        selectedModel || undefined,
+      )
       .catch(() => finalizeAssistantMessage());
   };
 
@@ -127,7 +148,9 @@ export default function ChatPanel() {
       <div className="flex-1 flex items-center justify-center text-muted-foreground bg-muted/30">
         <div className="text-center space-y-3">
           <FolderOpen size={48} className="text-muted-foreground/40 mx-auto" />
-          <p className="text-sm font-medium">Chọn hoặc tạo workspace để bắt đầu</p>
+          <p className="text-sm font-medium">
+            Chọn hoặc tạo workspace để bắt đầu
+          </p>
           <p className="text-xs text-muted-foreground/60">
             Workspace là thư mục chứa tài liệu giảng dạy của bạn
           </p>
@@ -197,12 +220,7 @@ export default function ChatPanel() {
             return <ToolCallBubble key={item.id} item={item} />;
           if (item.type === "reasoning")
             return <ReasoningBubble key={item.id} item={item} />;
-          return (
-            <MessageBubble
-              key={i}
-              message={item as MessageItem}
-            />
-          );
+          return <MessageBubble key={i} message={item as MessageItem} />;
         })}
 
         {/* Streaming turn */}
@@ -213,12 +231,7 @@ export default function ChatPanel() {
                 return <ToolCallBubble key={item.id} item={item} />;
               if (item.type === "reasoning")
                 return <ReasoningBubble key={item.id} item={item} />;
-              return (
-                <MessageBubble
-                  key={i}
-                  message={item as MessageItem}
-                />
-              );
+              return <MessageBubble key={i} message={item as MessageItem} />;
             })}
             {pendingToolCall && (
               <ToolCallBubble
@@ -278,7 +291,10 @@ export default function ChatPanel() {
                     <ChevronDown size={12} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-h-56 overflow-y-auto">
+                <DropdownMenuContent
+                  align="end"
+                  className="max-h-56 overflow-y-auto"
+                >
                   {models.length === 0 && (
                     <p className="text-xs text-muted-foreground px-3 py-2">
                       Không có model khả dụng

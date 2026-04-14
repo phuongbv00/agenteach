@@ -58,7 +58,7 @@ interface ChatState {
   savedMessageCount: number; // # of ModelMessages already persisted in DB
 
   // For LLM: full conversation history including tool calls and reasoning
-  toMessages(): ModelMessage[];
+  toModelMessages(): ModelMessage[];
 
   addUserMessage(content: string): void;
   appendToken(token: string): void;
@@ -106,7 +106,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   savedMessageCount: 0,
 
   // TODO: Replace ChatItem type with UIMessage type
-  toMessages(): ModelMessage[] {
+  toModelMessages(): ModelMessage[] {
     const result: ModelMessage[] = [];
     const items = get().items;
     let i = 0;
@@ -176,8 +176,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       i++;
     }
-
-    console.log("msg", result);
 
     return result;
   },

@@ -14,7 +14,6 @@ import createTimeTools from "./tools/TimeTools";
 import type { ToolsMetaMap } from "./tools/meta";
 import { defaultSummarize } from "./tools/meta";
 
-
 export interface ToolCallEvent {
   toolName: string;
   label: string;
@@ -50,7 +49,6 @@ export async function runAgent(
 
   const memory = MemoryStore.load();
   const systemPrompt = buildSystemPrompt(memory, workspace);
-  console.log("System Prompt:", systemPrompt);
 
   const index = getWorkspaceIndex(workspace.id, workspace.path);
 
@@ -88,9 +86,9 @@ export async function runAgent(
     await streamToUI(result.fullStream, win, signal, allMeta, (c) => {
       const type = c.type as string;
       if (type === prevChunkType) return;
-      if (["text-delta", "reasoning-delta"].includes(type))
-        console.log(`[chunk] ${type} ...`);
-      else console.log(`[chunk] ${type}`, c);
+      // if (["text-delta", "reasoning-delta"].includes(type))
+      //   console.log(`[chunk] ${type} ...`);
+      // else console.log(`[chunk] ${type}`, c);
       prevChunkType = type;
     });
   } catch (err) {
