@@ -24,6 +24,7 @@ services:
       --reasoning-parser gemma4
       --tool-call-parser gemma4
       --chat-template examples/tool_chat_template_gemma4.jinja
+      --default-chat-template-kwargs '{"enable_thinking": true}'
     deploy:
       resources:
         reservations:
