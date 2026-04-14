@@ -19,11 +19,11 @@ model_list:
   # Primary model served by vLLM on this machine
   # The model name here is what Agenteach should set as "Model ID"
   # ----------------------------------------------------------------
-  - model_name: qwen2.5-14b          # public alias exposed to clients
+  - model_name: gemma-4-e4b # public alias exposed to clients
     litellm_params:
-      model: openai/qwen2.5-14b      # "openai/" prefix → treat as OpenAI-compatible
+      model: openai/gemma-4-e4b # "openai/" prefix → treat as OpenAI-compatible
       api_base: http://vllm:8000/v1
-      api_key: "none"                # vLLM has no auth by default
+      api_key: "none" # vLLM has no auth by default
       max_tokens: 16384
 
   # ----------------------------------------------------------------
