@@ -1,6 +1,7 @@
 services:
   vllm:
-    image: vllm/vllm-openai:latest
+    # https://docs.vllm.ai/projects/recipes/en/latest/Google/Gemma4.html#docker
+    image: vllm/vllm-openai:gemma4-cu130
     container_name: agenteach-vllm
     runtime: nvidia
     environment:
@@ -11,7 +12,7 @@ services:
     ports:
       - "${VLLM_PORT:-8000}:8000"
     command: >
-      --model ${VLLM_MODEL}
+      ${VLLM_MODEL}
       --dtype ${VLLM_DTYPE:-auto}
       --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
       --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.90}
