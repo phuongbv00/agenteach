@@ -1,47 +1,51 @@
-import "katex/dist/katex.min.css";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import React, { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import type { MessageItem as ChatMessage, ReasoningItem, ToolCallItem } from "../stores/chatStore";
-import { normalizeMathDelimiters } from "../lib/utils";
+import "katex/dist/katex.min.css"
+import { ChevronDown, ChevronRight } from "lucide-react"
+import React, { useState } from "react"
+import ReactMarkdown from "react-markdown"
+import rehypeKatex from "rehype-katex"
+import remarkGfm from "remark-gfm"
+import remarkMath from "remark-math"
+import type {
+  MessageUIBlock,
+  ReasoningUIBlock,
+  ToolUseUIBlock,
+} from "../stores/chatStore"
+import { normalizeMathDelimiters } from "../lib/utils"
 
 // ── Thinking parser (for StreamingBubble only) ───────────────────────────────
 interface ParsedContent {
-  thinking: string;
-  thinkingOpen: boolean;
-  text: string;
+  thinking: string
+  thinkingOpen: boolean
+  text: string
 }
 
 function parseThinking(raw: string): ParsedContent {
-  const thinkRe = /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi;
-  let thinking = "";
-  let thinkingOpen = false;
-  let text = raw;
+  const thinkRe = /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi
+  let thinking = ""
+  let thinkingOpen = false
+  let text = raw
 
   text = raw.replace(thinkRe, (_, inner) => {
-    thinking += (thinking ? "\n\n" : "") + inner.trim();
-    return "";
-  });
+    thinking += (thinking ? "\n\n" : "") + inner.trim()
+    return ""
+  })
 
-  const openMatch = text.match(/<think(?:ing)?>([\s\S]*)$/i);
+  const openMatch = text.match(/<think(?:ing)?>([\s\S]*)$/i)
   if (openMatch) {
-    thinking += (thinking ? "\n\n" : "") + openMatch[1];
-    text = text.slice(0, text.length - openMatch[0].length);
-    thinkingOpen = true;
+    thinking += (thinking ? "\n\n" : "") + openMatch[1]
+    text = text.slice(0, text.length - openMatch[0].length)
+    thinkingOpen = true
   }
 
-  return { thinking: thinking.trim(), thinkingOpen, text: text.trim() };
+  return { thinking: thinking.trim(), thinkingOpen, text: text.trim() }
 }
 
 // ── ExpandableBubble (Reusable) ─────────────────────────────────────────────
 interface ExpandableBubbleProps {
-  label: React.ReactNode;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  isThinking?: boolean;
+  label: React.ReactNode
+  children: React.ReactNode
+  defaultExpanded?: boolean
+  isThinking?: boolean
 }
 
 export function ExpandableBubble({
@@ -50,7 +54,7 @@ export function ExpandableBubble({
   defaultExpanded = false,
   isThinking = false,
 }: ExpandableBubbleProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(defaultExpanded)
 
   return (
     <div className="mb-1.5">
@@ -86,13 +90,13 @@ export function ExpandableBubble({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 // ── ToolCallBubble ───────────────────────────────────────────────────────────
 interface ToolCallBubbleProps {
-  item: ToolCallItem;
-  isLoading?: boolean;
+  item: ToolUseUIBlock
+  isLoading?: boolean
 }
 
 export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
@@ -100,20 +104,20 @@ export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
     <div className="flex items-center gap-1.5">
       <span>{item.label}</span>
     </div>
-  );
+  )
 
   return (
     <ExpandableBubble label={label} isThinking={isLoading}>
       <div className="overflow-hidden">
-        {Object.keys(item.args).length > 0 && (
+        {Object.keys(item.input).length > 0 && (
           <div className="px-3 py-2 border-b border-dashed">
             <p className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider">
               Tham số
             </p>
             <div className="space-y-1">
-              {Object.entries(item.args).map(([k, v]) => (
+              {Object.entries(item.input).map(([k, v]) => (
                 <div key={k} className="flex gap-2">
-                  <span className="text-muted-foreground/80 flex-shrink-0">
+                  <span className="text-muted-foreground/80 shrink-0">
                     {k}:
                   </span>
                   <span className="text-muted-foreground font-mono break-all line-clamp-5 hover:line-clamp-none transition-all">
@@ -124,29 +128,35 @@ export function ToolCallBubble({ item, isLoading }: ToolCallBubbleProps) {
             </div>
           </div>
         )}
-        {item.result && (
+        {item.output && (
           <div className="px-3 py-2">
             <p className="text-muted-foreground font-medium mb-1.5 uppercase tracking-wider">
               Kết quả
             </p>
-            <pre className="text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed max-h-60 overflow-y-auto thin-scrollbar">
-              {item.result}
+            <pre
+              className={`whitespace-pre-wrap font-mono leading-relaxed max-h-60 overflow-y-auto thin-scrollbar ${
+                item.output.type === "error"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {item.output.value}
             </pre>
           </div>
         )}
       </div>
     </ExpandableBubble>
-  );
+  )
 }
 
 // ── ReasoningBubble ──────────────────────────────────────────────────────────
 interface ReasoningBubbleProps {
-  item: ReasoningItem;
-  isThinking?: boolean;
+  item: ReasoningUIBlock
+  isThinking?: boolean
 }
 
 export function ReasoningBubble({ item, isThinking }: ReasoningBubbleProps) {
-  const label = <span>{isThinking ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>;
+  const label = <span>{isThinking ? "Đang suy nghĩ" : "Dòng suy nghĩ"}</span>
 
   return (
     <ExpandableBubble label={label} isThinking={isThinking}>
@@ -154,26 +164,48 @@ export function ReasoningBubble({ item, isThinking }: ReasoningBubbleProps) {
         {item.content}
       </div>
     </ExpandableBubble>
-  );
+  )
 }
 
 // ── MessageBubble ────────────────────────────────────────────────────────────
 interface MessageBubbleProps {
-  message: ChatMessage;
+  message: MessageUIBlock
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
-  const isUser = message.role === "user";
+  const isUser = message.role === "user"
 
   if (isUser) {
     return (
       <div className="flex justify-end my-4">
         <div className="bg-primary text-primary-foreground px-4 py-2.5">
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          {message.parts.map((part, i) => {
+            if (part.type === "text")
+              return (
+                <p key={i} className="text-sm whitespace-pre-wrap">
+                  {part.text}
+                </p>
+              )
+            if (part.type === "image")
+              return (
+                <img
+                  key={i}
+                  src={part.url}
+                  className="max-w-sm mt-2 rounded"
+                  alt=""
+                />
+              )
+            return null
+          })}
         </div>
       </div>
-    );
+    )
   }
+
+  const textContent = message.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join("\n")
 
   return (
     <div className="my-4 prose prose-sm max-w-none">
@@ -181,17 +213,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
       >
-        {normalizeMathDelimiters(message.content)}
+        {normalizeMathDelimiters(textContent)}
       </ReactMarkdown>
     </div>
-  );
+  )
 }
 
 // ── StreamingBubble ──────────────────────────────────────────────────────────
 interface StreamingBubbleProps {
-  content: string;
-  reasoning?: string;
-  isStreaming?: boolean;
+  content: string
+  reasoning?: string
+  isStreaming?: boolean
 }
 
 export function StreamingBubble({
@@ -199,20 +231,20 @@ export function StreamingBubble({
   reasoning,
   isStreaming = true,
 }: StreamingBubbleProps) {
-  const parsed = parseThinking(content);
-  const thinkingText = reasoning || parsed.thinking;
+  const parsed = parseThinking(content)
+  const thinkingText = reasoning || parsed.thinking
   const thinkingOpen = reasoning
     ? reasoning.length > 0 && !content
-    : parsed.thinkingOpen;
-  const hasThinking = thinkingText.length > 0 || thinkingOpen;
-  const hasText = parsed.text.length > 0;
+    : parsed.thinkingOpen
+  const hasThinking = thinkingText.length > 0 || thinkingOpen
+  const hasText = parsed.text.length > 0
 
-  // Fake ReasoningItem for display during streaming
-  const fakeReasoningItem = {
-    type: "reasoning" as const,
+  // Fake ReasoningUIBlock for display during streaming
+  const fakeReasoningItem: ReasoningUIBlock = {
+    type: "reasoning",
     id: "streaming",
     content: thinkingText,
-  };
+  }
 
   return (
     <>
@@ -263,5 +295,5 @@ export function StreamingBubble({
         </div>
       ) : null}
     </>
-  );
+  )
 }

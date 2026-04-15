@@ -8,7 +8,7 @@ import {
   Square,
 } from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
-import type { MessageItem } from "../stores/chatStore";
+import type { MessageUIBlock } from "../stores/chatStore";
 import { useAppStore } from "../stores/appStore";
 import {
   MessageBubble,
@@ -16,7 +16,6 @@ import {
   StreamingBubble,
   ToolCallBubble,
 } from "./MessageBubble";
-import type { ToolCallEvent } from "../types/api";
 import { Button } from "@/renderer/components/ui/button";
 import { Textarea } from "@/renderer/components/ui/textarea";
 import {
@@ -98,11 +97,16 @@ export default function ChatPanel() {
     window.api.onReasoning((text) => appendReasoning(text));
     window.api.onToolCallStart((event) => {
       setFileProgress(null);
-      addToolCallStart(event as Omit<ToolCallEvent, "result">);
+      addToolCallStart({ toolName: event.toolName, label: event.label, input: event.args });
     });
     window.api.onToolCall((event) => {
       setFileProgress(null);
-      addToolCall(event as ToolCallEvent);
+      addToolCall({
+        toolName: event.toolName,
+        label: event.label,
+        input: event.args,
+        output: { type: "text", value: event.result },
+      });
     });
     window.api.onDone(() => {
       setFileProgress(null);
@@ -216,35 +220,25 @@ export default function ChatPanel() {
         )}
 
         {items.map((item, i) => {
-          if (item.type === "tool_call")
+          if (item.type === "tool-use")
             return <ToolCallBubble key={item.id} item={item} />;
           if (item.type === "reasoning")
             return <ReasoningBubble key={item.id} item={item} />;
-          return <MessageBubble key={i} message={item as MessageItem} />;
+          return <MessageBubble key={i} message={item as MessageUIBlock} />;
         })}
 
         {/* Streaming turn */}
         {isStreaming && (
           <>
             {pendingItems.map((item, i) => {
-              if (item.type === "tool_call")
+              if (item.type === "tool-use")
                 return <ToolCallBubble key={item.id} item={item} />;
               if (item.type === "reasoning")
                 return <ReasoningBubble key={item.id} item={item} />;
-              return <MessageBubble key={i} message={item as MessageItem} />;
+              return <MessageBubble key={i} message={item as MessageUIBlock} />;
             })}
             {pendingToolCall && (
-              <ToolCallBubble
-                item={{
-                  type: "tool_call",
-                  id: "pending",
-                  toolName: pendingToolCall.toolName,
-                  label: pendingToolCall.label,
-                  args: pendingToolCall.args,
-                  result: "",
-                }}
-                isLoading
-              />
+              <ToolCallBubble item={pendingToolCall} isLoading />
             )}
             <StreamingBubble
               content={streamingContent}

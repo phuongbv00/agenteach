@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from "zustand"
 import type {
   ModelMessage,
   TextPart,
@@ -6,95 +6,119 @@ import type {
   ReasoningUIPart,
   ToolCallPart,
   ToolResultPart,
-} from "ai";
+} from "ai"
 
-export interface ToolCallItem {
-  type: "tool_call";
-  id: string;
-  toolName: string;
-  label: string;
-  args: Record<string, unknown>;
-  result: string;
+// ── UIBlock types ─────────────────────────────────────────────────────────────
+
+export type MessageContentPart =
+  | { type: "text"; text: string }
+  | { type: "image"; url: string; mimeType?: string }
+  | { type: "file"; name: string; mimeType: string }
+
+export interface MessageUIBlock {
+  type: "message"
+  role: "user" | "assistant"
+  parts: MessageContentPart[]
 }
 
-export interface ReasoningItem {
-  type: "reasoning";
-  id: string;
-  content: string;
+export type ToolOutput =
+  | { type: "text"; value: string }
+  | { type: "error"; value: string }
+
+export interface ToolUseUIBlock {
+  type: "tool-use"
+  id: string
+  toolName: string
+  label: string
+  input: Record<string, unknown>
+  output?: ToolOutput
 }
 
-export interface MessageItem {
-  type: "message";
-  role: "user" | "assistant";
-  content: string;
+export interface ReasoningUIBlock {
+  type: "reasoning"
+  id: string
+  content: string
 }
 
-export type ChatItem = MessageItem | ToolCallItem | ReasoningItem;
+export type ChatUIBlock = MessageUIBlock | ToolUseUIBlock | ReasoningUIBlock
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Extract <think>...</think> from raw streaming content
 function extractThinking(raw: string): { thinking: string; text: string } {
-  const re = /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi;
-  let thinking = "";
+  const re = /<think(?:ing)?>([\s\S]*?)<\/think(?:ing)?>/gi
+  let thinking = ""
   const text = raw.replace(re, (_, inner) => {
-    thinking += (thinking ? "\n\n" : "") + inner.trim();
-    return "";
-  });
-  return { thinking: thinking.trim(), text: text.trim() };
+    thinking += (thinking ? "\n\n" : "") + inner.trim()
+    return ""
+  })
+  return { thinking: thinking.trim(), text: text.trim() }
 }
 
-export interface PendingToolCall {
-  toolName: string;
-  label: string;
-  args: Record<string, unknown>;
-}
+// ── State ─────────────────────────────────────────────────────────────────────
 
 interface ChatState {
-  items: ChatItem[];
-  isStreaming: boolean;
-  streamingContent: string;
-  reasoningContent: string;
-  pendingItems: ChatItem[];
-  pendingToolCall: PendingToolCall | null;
-  savedMessageCount: number; // # of ModelMessages already persisted in DB
+  items: ChatUIBlock[]
+  isStreaming: boolean
+  streamingContent: string
+  reasoningContent: string
+  pendingItems: ChatUIBlock[]
+  pendingToolCall: ToolUseUIBlock | null
+  savedMessageCount: number // # of ModelMessages already persisted in DB
 
   // For LLM: full conversation history including tool calls and reasoning
-  toModelMessages(): ModelMessage[];
+  toModelMessages(): ModelMessage[]
 
-  addUserMessage(content: string): void;
-  appendToken(token: string): void;
-  appendReasoning(text: string): void;
-  addToolCallStart(event: PendingToolCall): void;
-  addToolCall(event: Omit<ToolCallItem, "type" | "id">): void;
-  finalizeAssistantMessage(): void;
-  setStreaming(v: boolean): void;
-  loadItems(messages: ModelMessage[]): void;
-  markSaved(count: number): void;
-  clear(): void;
+  addUserMessage(content: string): void
+  appendToken(token: string): void
+  appendReasoning(text: string): void
+  addToolCallStart(event: {
+    toolName: string
+    label: string
+    input: Record<string, unknown>
+  }): void
+  addToolCall(event: {
+    toolName: string
+    label: string
+    input: Record<string, unknown>
+    output: ToolOutput
+  }): void
+  finalizeAssistantMessage(): void
+  setStreaming(v: boolean): void
+  loadItems(messages: ModelMessage[]): void
+  markSaved(count: number): void
+  clear(): void
 }
 
-let _toolCallCounter = 0;
-let _reasoningCounter = 0;
+let _toolCallCounter = 0
+let _reasoningCounter = 0
 
 function snapshotItems(
   streamingContent: string,
   reasoningContent: string,
-): ChatItem[] {
-  const result: ChatItem[] = [];
-  const { thinking: tagThinking, text } = extractThinking(streamingContent);
-  const reasoning = reasoningContent.trim() || tagThinking;
+): ChatUIBlock[] {
+  const result: ChatUIBlock[] = []
+  const { thinking: tagThinking, text } = extractThinking(streamingContent)
+  const reasoning = reasoningContent.trim() || tagThinking
   if (reasoning) {
     result.push({
       type: "reasoning",
       id: `r-${++_reasoningCounter}`,
       content: reasoning,
-    });
+    })
   }
-  const content = text.trim() || (!reasoning ? streamingContent.trim() : "");
+  const content = text.trim() || (!reasoning ? streamingContent.trim() : "")
   if (content) {
-    result.push({ type: "message", role: "assistant", content });
+    result.push({
+      type: "message",
+      role: "assistant",
+      parts: [{ type: "text", text: content }],
+    })
   }
-  return result;
+  return result
 }
+
+// ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useChatStore = create<ChatState>((set, get) => ({
   items: [],
@@ -105,57 +129,58 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pendingToolCall: null,
   savedMessageCount: 0,
 
-  // TODO: Replace ChatItem type with UIMessage type
   toModelMessages(): ModelMessage[] {
-    const result: ModelMessage[] = [];
-    const items = get().items;
-    let i = 0;
-    let tcCounter = 0;
+    const result: ModelMessage[] = []
+    const items = get().items
+    let i = 0
+    let tcCounter = 0
 
     while (i < items.length) {
-      const item = items[i];
+      const item = items[i]
 
       if (item.type === "message" && item.role === "user") {
-        result.push({ role: "user", content: item.content });
-        i++;
-        continue;
+        const text = item.parts.find((p) => p.type === "text")
+        result.push({ role: "user", content: text?.text ?? "" })
+        i++
+        continue
       }
 
-      // Collect a step: reasoning* + assistant? + tool_call?
+      // Collect a step: reasoning* + assistant? + tool-use?
       if (
         item.type === "reasoning" ||
         item.type === "message" ||
-        item.type === "tool_call"
+        item.type === "tool-use"
       ) {
-        const parts: Array<TextPart | FilePart | ToolCallPart> = [];
+        const parts: Array<TextPart | FilePart | ToolCallPart> = []
 
         // Skip reasoning blocks — display-only, not sent to LLM
         while (i < items.length && items[i].type === "reasoning") {
-          i++;
+          i++
         }
 
         // Collect assistant text
         if (
           i < items.length &&
           items[i].type === "message" &&
-          (items[i] as MessageItem).role === "assistant"
+          (items[i] as MessageUIBlock).role === "assistant"
         ) {
-          const msg = items[i] as MessageItem;
-          if (msg.content) parts.push({ type: "text", text: msg.content });
-          i++;
+          const msg = items[i] as MessageUIBlock
+          const text = msg.parts.find((p) => p.type === "text")
+          if (text?.text) parts.push({ type: "text", text: text.text })
+          i++
         }
 
-        // Check for following tool call
-        if (i < items.length && items[i].type === "tool_call") {
-          const tc = items[i] as ToolCallItem;
-          const tcId = `hist-${++tcCounter}`;
+        // Check for following tool-use block
+        if (i < items.length && items[i].type === "tool-use") {
+          const tc = items[i] as ToolUseUIBlock
+          const tcId = `hist-${++tcCounter}`
           parts.push({
             type: "tool-call",
             toolCallId: tcId,
             toolName: tc.toolName,
-            input: tc.args,
-          });
-          result.push({ role: "assistant", content: parts });
+            input: tc.input,
+          })
+          result.push({ role: "assistant", content: parts })
           result.push({
             role: "tool",
             content: [
@@ -163,26 +188,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 type: "tool-result",
                 toolCallId: tcId,
                 toolName: tc.toolName,
-                output: { type: "text", value: tc.result },
+                output: {
+                  type: "text",
+                  value: tc.output?.value ?? "",
+                },
               },
             ],
-          });
-          i++;
+          })
+          i++
         } else if (parts.length > 0) {
-          result.push({ role: "assistant", content: parts });
+          result.push({ role: "assistant", content: parts })
         }
-        continue;
+        continue
       }
 
-      i++;
+      i++
     }
 
-    return result;
+    return result
   },
 
   addUserMessage: (content) =>
     set((s) => ({
-      items: [...s.items, { type: "message", role: "user", content }],
+      items: [
+        ...s.items,
+        {
+          type: "message",
+          role: "user",
+          parts: [{ type: "text", text: content }],
+        },
+      ],
       streamingContent: "",
       reasoningContent: "",
       pendingItems: [],
@@ -198,51 +233,64 @@ export const useChatStore = create<ChatState>((set, get) => ({
       s.isStreaming ? { reasoningContent: s.reasoningContent + text } : s,
     ),
 
-  addToolCallStart: (event) => {
+  addToolCallStart: ({ toolName, label, input }) => {
     set((s) => {
-      if (!s.isStreaming) return s;
-      const newPending: ChatItem[] = [
+      if (!s.isStreaming) return s
+      const block: ToolUseUIBlock = {
+        type: "tool-use",
+        id: `tc-${++_toolCallCounter}`,
+        toolName,
+        label,
+        input,
+      }
+      const newPending: ChatUIBlock[] = [
         ...s.pendingItems,
         ...snapshotItems(s.streamingContent, s.reasoningContent),
-      ];
+      ]
       return {
         pendingItems: newPending,
         streamingContent: "",
         reasoningContent: "",
-        pendingToolCall: event,
-      };
-    });
+        pendingToolCall: block,
+      }
+    })
   },
 
-  addToolCall: (event) => {
-    const toolItem: ToolCallItem = {
-      type: "tool_call",
-      id: `tc-${++_toolCallCounter}`,
-      ...event,
-    };
+  addToolCall: ({ toolName, label, input, output }) => {
     set((s) => {
-      if (!s.isStreaming) return s;
-      const newPending: ChatItem[] = [
+      if (!s.isStreaming) return s
+      const existing = s.pendingToolCall
+      const toolBlock: ToolUseUIBlock = existing
+        ? { ...existing, label, input, output }
+        : {
+            type: "tool-use",
+            id: `tc-${++_toolCallCounter}`,
+            toolName,
+            label,
+            input,
+            output,
+          }
+      const newPending: ChatUIBlock[] = [
         ...s.pendingItems,
         ...snapshotItems(s.streamingContent, s.reasoningContent),
-        toolItem,
-      ];
+        toolBlock,
+      ]
       return {
         pendingItems: newPending,
         streamingContent: "",
         reasoningContent: "",
         pendingToolCall: null,
-      };
-    });
+      }
+    })
   },
 
   finalizeAssistantMessage: () => {
-    const { streamingContent, reasoningContent, items, pendingItems } = get();
-    const newItems: ChatItem[] = [
+    const { streamingContent, reasoningContent, items, pendingItems } = get()
+    const newItems: ChatUIBlock[] = [
       ...items,
       ...pendingItems,
       ...snapshotItems(streamingContent, reasoningContent),
-    ];
+    ]
     set({
       items: newItems,
       isStreaming: false,
@@ -250,91 +298,101 @@ export const useChatStore = create<ChatState>((set, get) => ({
       reasoningContent: "",
       pendingItems: [],
       pendingToolCall: null,
-    });
+    })
   },
 
   setStreaming: (v) => set({ isStreaming: v }),
 
   markSaved: (count) => set({ savedMessageCount: count }),
 
-  // TODO: Replace ChatItem type with UIMessage type
   loadItems: (messages) => {
-    const chatItems: ChatItem[] = [];
-    let i = 0;
+    const chatItems: ChatUIBlock[] = []
+    let i = 0
 
     while (i < messages.length) {
-      const msg = messages[i];
+      const msg = messages[i]
 
       if (msg.role === "user") {
         chatItems.push({
           type: "message",
           role: "user",
-          content: typeof msg.content === "string" ? msg.content : "",
-        });
-        i++;
-        continue;
+          parts: [
+            {
+              type: "text",
+              text: typeof msg.content === "string" ? msg.content : "",
+            },
+          ],
+        })
+        i++
+        continue
       }
 
       if (msg.role === "assistant") {
-        const content = msg.content;
+        const content = msg.content
 
         // AssistantContent can be a plain string
         if (typeof content === "string") {
           if (content)
-            chatItems.push({ type: "message", role: "assistant", content });
-          i++;
-          continue;
+            chatItems.push({
+              type: "message",
+              role: "assistant",
+              parts: [{ type: "text", text: content }],
+            })
+          i++
+          continue
         }
 
-        const toolCallParts: Array<ToolCallPart> = [];
+        const toolCallParts: Array<ToolCallPart> = []
         for (const part of content) {
           if (part.type === "reasoning") {
             chatItems.push({
               type: "reasoning",
               id: `r-${++_reasoningCounter}`,
               content: (part as ReasoningUIPart).text,
-            });
+            })
           } else if (part.type === "text") {
             if (part.text)
               chatItems.push({
                 type: "message",
                 role: "assistant",
-                content: part.text,
-              });
+                parts: [{ type: "text", text: part.text }],
+              })
           } else if (part.type === "tool-call") {
-            toolCallParts.push(part as ToolCallPart);
+            toolCallParts.push(part as ToolCallPart)
           }
         }
 
         if (toolCallParts.length > 0) {
-          const nextMsg = messages[i + 1];
-          const toolResults = nextMsg?.role === "tool" ? nextMsg.content : [];
+          const nextMsg = messages[i + 1]
+          const toolResults = nextMsg?.role === "tool" ? nextMsg.content : []
           for (const tcPart of toolCallParts) {
             const resultPart = toolResults.find(
               (r): r is ToolResultPart =>
                 r.type === "tool-result" && r.toolCallId === tcPart.toolCallId,
-            );
+            )
             chatItems.push({
-              type: "tool_call",
+              type: "tool-use",
               id: `tc-${++_toolCallCounter}`,
               toolName: tcPart.toolName,
               label:
                 (tcPart.providerOptions?.["agenteach"]?.["label"] as
                   | string
                   | undefined) ?? tcPart.toolName,
-              args: tcPart.input as Record<string, unknown>,
-              result: resultPart ? String(resultPart.output) : "",
-            });
+              input: tcPart.input as Record<string, unknown>,
+              output: resultPart
+                ? { type: "text", value: String(resultPart.output) }
+                : undefined,
+            })
           }
-          i += nextMsg?.role === "tool" ? 2 : 1;
+          i += nextMsg?.role === "tool" ? 2 : 1
         } else {
-          i++;
+          i++
         }
-        continue;
+        continue
       }
 
       // tool messages are consumed above
-      i++;
+      i++
     }
 
     set({
@@ -344,7 +402,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       pendingItems: [],
       isStreaming: false,
       savedMessageCount: messages.length,
-    });
+    })
   },
 
   clear: () =>
@@ -357,4 +415,4 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isStreaming: false,
       savedMessageCount: 0,
     }),
-}));
+}))
