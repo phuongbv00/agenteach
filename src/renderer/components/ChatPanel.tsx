@@ -309,7 +309,7 @@ export default function ChatPanel() {
                 <Button
                   size="icon-sm"
                   variant="destructive"
-                  className="rounded-xl flex-shrink-0"
+                  className="rounded-xl shrink-0"
                   onClick={() => {
                     finalizeAssistantMessage();
                     window.api.cancelMessage();
@@ -320,7 +320,7 @@ export default function ChatPanel() {
               ) : (
                 <Button
                   size="icon-sm"
-                  className="rounded-xl flex-shrink-0"
+                  className="rounded-xl shrink-0"
                   disabled={!input.trim()}
                   onClick={send}
                 >

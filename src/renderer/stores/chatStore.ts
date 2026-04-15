@@ -21,7 +21,7 @@ export interface MessageUIBlock {
   parts: MessageContentPart[]
 }
 
-export type ToolOutput =
+export type ToolUseOutput =
   | { type: "text"; value: string }
   | { type: "error"; value: string }
 
@@ -31,7 +31,7 @@ export interface ToolUseUIBlock {
   toolName: string
   label: string
   input: Record<string, unknown>
-  output?: ToolOutput
+  output?: ToolUseOutput
 }
 
 export interface ReasoningUIBlock {
@@ -81,7 +81,7 @@ interface ChatState {
     toolName: string
     label: string
     input: Record<string, unknown>
-    output: ToolOutput
+    output: ToolUseOutput
   }): void
   finalizeAssistantMessage(): void
   setStreaming(v: boolean): void
@@ -379,9 +379,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
                   | string
                   | undefined) ?? tcPart.toolName,
               input: tcPart.input as Record<string, unknown>,
-              output: resultPart
-                ? { type: "text", value: String(resultPart.output) }
-                : undefined,
+              output: resultPart?.output as ToolUseOutput,
             })
           }
           i += nextMsg?.role === "tool" ? 2 : 1
