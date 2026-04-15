@@ -183,6 +183,11 @@ async function streamToUI(
         win.webContents.send("agent:toolCall", event);
         break;
       }
+      case "tool-error": {
+        const id = c.toolCallId as string;
+        pendingToolCalls.delete(id);
+        break;
+      }
       case "error": {
         win.webContents.send("agent:token", `\n\nLỗi: ${String(c.error)}`);
         break;
