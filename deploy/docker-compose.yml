@@ -1,8 +1,8 @@
 services:
-  vllm-gemma4:
+  vllm-gemma4-e4b:
     # https://docs.vllm.ai/projects/recipes/en/latest/Google/Gemma4.html#docker
     image: vllm/vllm-openai:gemma4-cu130
-    container_name: agenteach-vllm-gemma4
+    container_name: agenteach-vllm-gemma4-e4b
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
@@ -12,12 +12,13 @@ services:
     ports:
       - "${VLLM_PORT:-8000}:8000"
     command: >
-      ${VLLM_MODEL}
-      --dtype ${VLLM_DTYPE:-auto}
+      google/gemma-4-E4B-it
+      --dtype bfloat16
       --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
       --gpu-memory-utilization ${VLLM_GPU_MEM_UTIL:-0.90}
       --tensor-parallel-size ${VLLM_TENSOR_PARALLEL:-1}
-      --served-model-name ${VLLM_SERVED_NAME:-default}
+      --api-key ${VLLM_API_KEY:-}
+      --served-model-name gemma4:e4b
       --enable-prefix-caching
       --trust-remote-code
       --enable-auto-tool-choice
@@ -40,31 +41,6 @@ services:
       retries: 5
       start_period: 120s
     restart: unless-stopped
-
-  # litellm:
-  #   image: ghcr.io/berriai/litellm:main-latest
-  #   container_name: agenteach-litellm
-  #   depends_on:
-  #     vllm:
-  #       condition: service_healthy
-  #   environment:
-  #     - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
-  #     - LITELLM_SALT_KEY=${LITELLM_SALT_KEY:-}
-  #     - DATABASE_URL=${DATABASE_URL:-}
-  #     - STORE_MODEL_IN_DB=${STORE_MODEL_IN_DB:-false}
-  #   volumes:
-  #     - ./litellm-config.yaml:/app/config.yaml:ro
-  #   ports:
-  #     - "${LITELLM_PORT:-4000}:4000"
-  #   command:
-  #     ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
-  #     interval: 20s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 30s
-  #   restart: unless-stopped
 
 networks:
   default:
