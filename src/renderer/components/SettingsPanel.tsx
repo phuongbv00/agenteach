@@ -9,7 +9,6 @@ import {
 } from "@/renderer/components/ui/dialog";
 import { Input } from "@/renderer/components/ui/input";
 import { Label } from "@/renderer/components/ui/label";
-import { Separator } from "@/renderer/components/ui/separator";
 import {
   Tabs,
   TabsContent,
@@ -88,14 +87,12 @@ export default function SettingsPanel({ onClose }: Props) {
   const [editingProvider, setEditingProvider] = useState<AIProvider | null>(
     null,
   );
-  const [providerModels, setProviderModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState(
     config?.selectedModel ?? "",
   );
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<"ok" | "fail" | null>(null);
-  const [modelSaving, setModelSaving] = useState(false);
-  const [modelSaved, setModelSaved] = useState(false);
+  const [checkPreviewModels, setCheckPreviewModels] = useState<string[]>([]);
 
   // ── Memory state ────────────────────────────────────────────
   const [memory, setMemory] = useState<string>("");
@@ -117,7 +114,9 @@ export default function SettingsPanel({ onClose }: Props) {
   const [mcpSearch, setMcpSearch] = useState("");
 
   const reloadPlugins = () => {
-    window.api.listSkills().then((skills) => { setSkills(skills); });
+    window.api.listSkills().then((skills) => {
+      setSkills(skills);
+    });
     window.api.listMcp().then(setMcps);
   };
 
@@ -198,30 +197,30 @@ export default function SettingsPanel({ onClose }: Props) {
     return () => window.api.offMemoryUpdated();
   }, []);
 
-  useEffect(() => {
-    const active = providers.find((p) => p.id === activeProviderId);
-    if (active) window.api.listProviderModels(active).then(setProviderModels);
-  }, [activeProviderId]);
-
   // ── Provider handlers ────────────────────────────────────────
   const handleCheckProvider = async (provider: AIProvider) => {
     setChecking(true);
     setCheckResult(null);
+    setCheckPreviewModels([]);
     const ok = await window.api.checkProvider(provider);
     setCheckResult(ok ? "ok" : "fail");
     setChecking(false);
     if (ok) {
       const list = await window.api.listProviderModels(provider);
-      setProviderModels(list);
+      setCheckPreviewModels(list);
     }
   };
 
   const handleSaveProvider = async (provider: AIProvider) => {
     await window.api.saveProvider(provider);
+    await window.api.setActiveProvider(provider.id);
     const cfg = await window.api.getConfig();
     setConfig(cfg);
     setProviders(cfg.providers);
+    setActiveProviderIdState(cfg.activeProviderId);
     setEditingProvider(null);
+    setCheckPreviewModels([]);
+    setCheckResult(null);
   };
 
   const handleDeleteProvider = async (id: string) => {
@@ -236,31 +235,23 @@ export default function SettingsPanel({ onClose }: Props) {
   const handleSetActiveProvider = async (id: string) => {
     await window.api.setActiveProvider(id);
     setActiveProviderIdState(id);
-    const cfg = await window.api.getConfig();
-    setConfig(cfg);
-    const active = cfg.providers.find((p) => p.id === id);
+    const active = providers.find((p) => p.id === id);
     if (active) {
       const list = await window.api.listProviderModels(active);
-      setProviderModels(list);
-      // Auto-select first model of the new provider
-      if (list.length > 0) {
-        setSelectedModel(list[0]);
+      const firstModel = list[0];
+      if (firstModel) {
+        await window.api.selectModel(firstModel);
+        setSelectedModel(firstModel);
       }
     }
+    const cfg = await window.api.getConfig();
+    setConfig(cfg);
   };
 
-  const handleSelectModel = (model: string) => {
+  const handleSelectModel = async (model: string) => {
     setSelectedModel(model);
-    setModelSaved(false);
-  };
-
-  const handleSaveModel = async () => {
-    setModelSaving(true);
-    await window.api.selectModel(selectedModel);
+    await window.api.selectModel(model);
     setConfig(await window.api.getConfig());
-    setModelSaving(false);
-    setModelSaved(true);
-    setTimeout(() => setModelSaved(false), 2000);
   };
 
   // ── Memory save ──────────────────────────────────────────────
@@ -490,7 +481,9 @@ export default function SettingsPanel({ onClose }: Props) {
               {/* Provider list */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Kết nối AI</h3>
+                  <h3 className="text-sm font-semibold">
+                    {providers.length} kết nối
+                  </h3>
                   <Button
                     variant="ghost"
                     size="xs"
@@ -590,23 +583,44 @@ export default function SettingsPanel({ onClose }: Props) {
                     ] as const
                   ).map(({ label, key, placeholder, mono }) => (
                     <div key={key} className="flex items-center gap-3">
-                      <Label className="text-xs w-16 shrink-0">
-                        {label}
-                      </Label>
+                      <Label className="text-xs w-16 shrink-0">{label}</Label>
                       <Input
                         type={key === "apiKey" ? "password" : "text"}
                         value={editingProvider[key]}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setEditingProvider({
                             ...editingProvider,
                             [key]: e.target.value,
-                          })
-                        }
+                          });
+                          if (key === "baseUrl" || key === "apiKey") {
+                            setCheckResult(null);
+                            setCheckPreviewModels([]);
+                          }
+                        }}
                         placeholder={placeholder}
                         className={`h-8 text-sm ${mono ? "font-mono" : ""}`}
                       />
                     </div>
                   ))}
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs w-16 shrink-0">Model</Label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => handleSelectModel(e.target.value)}
+                      disabled={checkPreviewModels.length === 0}
+                      className="h-8 flex-1 rounded-md border bg-background px-2 text-sm font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {checkPreviewModels.length === 0 ? (
+                        <option value="">— kiểm tra kết nối trước —</option>
+                      ) : (
+                        checkPreviewModels.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
                   <div className="flex gap-2 pt-1 items-center">
                     <Button
                       variant="outline"
@@ -618,12 +632,7 @@ export default function SettingsPanel({ onClose }: Props) {
                     </Button>
                     {checkResult === "ok" && (
                       <span className="flex items-center gap-1 text-xs text-primary">
-                        <CheckCircle2 size={14} /> OK
-                      </span>
-                    )}
-                    {checkResult === "fail" && (
-                      <span className="flex items-center gap-1 text-xs text-destructive">
-                        <XCircle size={14} /> ERROR
+                        <CheckCircle2 size={14} /> Kết nối thành công
                       </span>
                     )}
                     <div className="flex-1" />
@@ -633,6 +642,7 @@ export default function SettingsPanel({ onClose }: Props) {
                       onClick={() => {
                         setEditingProvider(null);
                         setCheckResult(null);
+                        setCheckPreviewModels([]);
                       }}
                     >
                       Huỷ
@@ -640,44 +650,19 @@ export default function SettingsPanel({ onClose }: Props) {
                     <Button
                       size="sm"
                       onClick={() => handleSaveProvider(editingProvider)}
+                      disabled={checkResult !== "ok" || !selectedModel}
                     >
                       Lưu
                     </Button>
                   </div>
-                </div>
-              )}
-
-              <Separator className="my-4" />
-
-              {/* Model selection */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">
-                  Model AI mặc định
-                </h3>
-                <div className="space-y-2">
-                  {providerModels.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Chưa có model — kiểm tra kết nối provider.
+                  {checkResult === "fail" && (
+                    <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+                      <XCircle size={14} /> Không kết nối được — kiểm tra lại
+                      địa chỉ và API key
                     </p>
                   )}
-                  {providerModels.map((m) => (
-                    <label
-                      key={m}
-                      className={`flex items-center gap-3 p-3 border cursor-pointer transition-colors ${selectedModel === m ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="model"
-                        value={m}
-                        checked={selectedModel === m}
-                        onChange={() => handleSelectModel(m)}
-                        className="accent-primary"
-                      />
-                      <span className="text-sm font-mono">{m}</span>
-                    </label>
-                  ))}
                 </div>
-              </div>
+              )}
             </TabsContent>
 
             {/* ── Tab: Memory ── */}
@@ -685,22 +670,12 @@ export default function SettingsPanel({ onClose }: Props) {
               {!memory && memory !== "" ? (
                 <p className="text-sm text-muted-foreground">Đang tải...</p>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="text-primary bg-primary/10"
-                    >
-                      Cá nhân hoá
-                    </Badge>
-                  </div>
-                  <Textarea
-                    value={memory}
-                    onChange={(e) => setMemory(e.target.value)}
-                    placeholder="Nhập thông tin cá nhân hoá. Cú pháp khuyến nghị: Markdown"
-                    className="min-h-50"
-                  />
-                </div>
+                <Textarea
+                  value={memory}
+                  onChange={(e) => setMemory(e.target.value)}
+                  placeholder="Nhập thông tin cá nhân hoá. Cú pháp khuyến nghị: Markdown"
+                  className="min-h-50"
+                />
               )}
             </TabsContent>
 
@@ -993,19 +968,7 @@ export default function SettingsPanel({ onClose }: Props) {
           <Button variant="outline" onClick={onClose}>
             Đóng
           </Button>
-          {tab === "connection" && selectedModel && (
-            <Button onClick={handleSaveModel} disabled={modelSaving}>
-              {modelSaved ? (
-                <span className="flex items-center gap-1">
-                  <Check size={14} /> Đã lưu
-                </span>
-              ) : modelSaving ? (
-                "Đang lưu..."
-              ) : (
-                "Lưu"
-              )}
-            </Button>
-          )}
+
           {tab === "memory" && memory !== null && (
             <Button onClick={handleSaveMemory} disabled={memSaving}>
               {memSaved ? (

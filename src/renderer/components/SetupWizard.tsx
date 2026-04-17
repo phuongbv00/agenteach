@@ -228,6 +228,7 @@ export default function SetupWizard({ onComplete }: Props) {
                       setSelectedPresetId(p.id);
                       setConnectionOk(null);
                       setCustomUrl("");
+                      setApiKey("");
                     }}
                     className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${
                       selectedPresetId === p.id
