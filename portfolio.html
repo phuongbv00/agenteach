@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenteach — Trợ lý AI dành cho Giáo viên</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50:  '#eff6ff',
+              100: '#dbeafe',
+              200: '#bfdbfe',
+              300: '#93c5fd',
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+              950: '#172554',
+            },
+            accent: {
+              400: '#fb923c',
+              500: '#f97316',
+              600: '#ea580c',
+            }
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.6s ease-out forwards',
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'pulse-slow': 'pulse 3s ease-in-out infinite',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(24px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: 'Inter', sans-serif; }
+
+    .observe-fade { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .observe-fade.visible { opacity: 1; transform: none; }
+    .observe-fade-delay-1 { transition-delay: 0.1s; }
+    .observe-fade-delay-2 { transition-delay: 0.2s; }
+    .observe-fade-delay-3 { transition-delay: 0.3s; }
+    .observe-fade-delay-4 { transition-delay: 0.4s; }
+    .observe-fade-delay-5 { transition-delay: 0.5s; }
+    .observe-fade-delay-6 { transition-delay: 0.6s; }
+
+    .gradient-hero {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 40%, #2563eb 70%, #1e40af 100%);
+    }
+    .dark .gradient-hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #1d4ed8 70%, #172554 100%);
+    }
+
+    .glass-card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .tab-btn.active {
+      background-color: #2563eb;
+      color: #fff;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .step-connector::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 100%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 40px;
+      background: linear-gradient(to bottom, #3b82f6, transparent);
+    }
+
+    /* Comparison table highlight */
+    .highlight-col { background: linear-gradient(to bottom, rgba(37,99,235,0.12), rgba(37,99,235,0.04)); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 3px; }
+
+    /* Code block */
+    .code-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      position: relative;
+      overflow-x: auto;
+    }
+    .code-block .prompt { color: #60a5fa; }
+    .code-block .cmd { color: #34d399; }
+
+    /* Floating blobs */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+
+<!-- NAV -->
+<nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2 font-bold text-brand-700 dark:text-brand-300 text-lg">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="28" height="28" rx="7" fill="#2563eb"/>
+        <path d="M8 20 L14 8 L20 20" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10.5 15.5 L17.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Agenteach
+    </div>
+    <div class="hidden sm:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+      <a href="#features" class="hover:text-brand-600 transition-colors">Tính năng</a>
+      <a href="#compare" class="hover:text-brand-600 transition-colors">So sánh</a>
+      <a href="#guide" class="hover:text-brand-600 transition-colors">Hướng dẫn</a>
+      <a href="#workflow" class="hover:text-brand-600 transition-colors">Quy trình</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="toggleDark()" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Đổi giao diện">
+        <svg id="icon-moon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a6 6 0 0 0 0 12 6 6 0 0 0 0-12zM21 12h1M3 12H2M12 21v1M12 3V2"/></svg>
+        <svg id="icon-sun" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <a href="#download" class="hidden sm:inline-flex items-center gap-1.5 px-4 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-full transition-colors">
+        Tải về
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="gradient-hero relative overflow-hidden pt-14 min-h-screen flex items-center">
+  <!-- Blobs -->
+  <div class="blob w-96 h-96 bg-blue-300 top-10 -left-32"></div>
+  <div class="blob w-72 h-72 bg-orange-400 bottom-20 right-10"></div>
+  <div class="blob w-64 h-64 bg-indigo-400 top-1/2 left-1/2 -translate-x-1/2"></div>
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-20 relative z-10">
+    <div class="text-center">
+      <!-- Badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-white text-sm font-medium mb-6">
+        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+        macOS &amp; Windows
+      </div>
+
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6">
+        Trợ lý AI cá nhân<br/>
+        <span class="text-accent-400">dành riêng cho Giáo viên</span>
+      </h1>
+
+      <p class="text-blue-100 text-lg sm:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
+        Soạn giáo án, tạo đề kiểm tra, đọc và chỉnh sửa tài liệu — tất cả diễn ra ngay trên máy tính của bạn.
+        Không upload lên mạng. Hoạt động hoàn toàn offline.
+      </p>
+
+      <!-- Badges row -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-10">
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full glass-card text-white text-sm">
+          🔒 100% riêng tư
+        </span>
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full glass-card text-white text-sm">
+          📴 Hoạt động offline
+        </span>
+        <span class="flex items-center gap-1.5 px-3 py-1 rounded-full glass-card text-white text-sm">
+          🆓 Miễn phí sử dụng
+        </span>
+      </div>
+
+      <!-- CTA -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="#download" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-white hover:bg-blue-50 text-brand-700 font-bold text-base rounded-full transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Tải về miễn phí
+        </a>
+        <a href="#guide" class="inline-flex items-center justify-center gap-2 px-8 py-3.5 glass-card hover:bg-white/15 text-white font-semibold text-base rounded-full transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Hướng dẫn cài đặt
+        </a>
+      </div>
+    </div>
+
+    <!-- App mockup -->
+    <div class="mt-16 observe-fade">
+      <div class="max-w-4xl mx-auto glass-card rounded-2xl overflow-hidden shadow-2xl">
+        <!-- Window bar -->
+        <div class="flex items-center gap-2 px-4 py-3 bg-white/5 border-b border-white/10">
+          <div class="w-3 h-3 rounded-full bg-red-400"></div>
+          <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+          <div class="w-3 h-3 rounded-full bg-green-400"></div>
+          <span class="ml-3 text-white/50 text-xs font-mono">Agenteach</span>
+        </div>
+        <!-- App layout mockup -->
+        <div class="flex h-72 sm:h-96">
+          <!-- Sidebar -->
+          <div class="w-52 bg-white/5 border-r border-white/10 p-3 flex flex-col gap-2 hidden sm:flex">
+            <div class="text-white/40 text-xs font-semibold uppercase tracking-wider px-2 mb-1">Workspace</div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-brand-600/40 text-white text-xs">
+              <span>📁</span> Toán 10A
+            </div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 text-white/60 text-xs cursor-pointer">
+              <span>📁</span> Vật lý 11B
+            </div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 text-white/60 text-xs cursor-pointer">
+              <span>📁</span> Hóa học 12C
+            </div>
+            <div class="mt-3 text-white/40 text-xs font-semibold uppercase tracking-wider px-2">Cuộc trò chuyện</div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-brand-600/30 text-white text-xs">
+              <span>💬</span> Giáo án tuần 12
+            </div>
+            <div class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 text-white/60 text-xs cursor-pointer">
+              <span>💬</span> Đề kiểm tra 15'
+            </div>
+          </div>
+          <!-- Chat area -->
+          <div class="flex-1 flex flex-col p-4 gap-3">
+            <!-- AI message -->
+            <div class="flex gap-3">
+              <div class="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">A</div>
+              <div class="glass-card rounded-2xl rounded-tl-none px-4 py-2.5 max-w-xs">
+                <p class="text-white text-xs leading-relaxed">Tôi đã soạn xong giáo án Chương 5 — Hàm số bậc hai. Đã xuất PDF vào thư mục <span class="text-accent-400 font-mono text-xs">Toán 10A/</span></p>
+              </div>
+            </div>
+            <!-- Tool call pill -->
+            <div class="ml-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-400/30 w-fit">
+              <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="text-green-300 text-xs">Đã tạo PDF: giao_an_chuong5.pdf</span>
+            </div>
+            <!-- User message -->
+            <div class="flex gap-3 justify-end">
+              <div class="bg-brand-600 rounded-2xl rounded-tr-none px-4 py-2.5 max-w-xs">
+                <p class="text-white text-xs">Hay quá! Giờ tạo thêm bài kiểm tra 15 phút cho nội dung này nhé</p>
+              </div>
+            </div>
+            <!-- AI typing -->
+            <div class="flex gap-3">
+              <div class="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">A</div>
+              <div class="glass-card rounded-2xl rounded-tl-none px-4 py-2.5">
+                <div class="flex gap-1 items-center h-4">
+                  <div class="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce" style="animation-delay:0ms"></div>
+                  <div class="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce" style="animation-delay:150ms"></div>
+                  <div class="w-1.5 h-1.5 bg-blue-300 rounded-full animate-bounce" style="animation-delay:300ms"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Input bar -->
+            <div class="mt-auto flex items-center gap-2 glass-card rounded-full px-4 py-2">
+              <input type="text" placeholder="Nhập yêu cầu..." class="flex-1 bg-transparent text-white text-xs placeholder-white/40 outline-none" readonly />
+              <button class="w-6 h-6 bg-brand-500 rounded-full flex items-center justify-center">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="py-24 bg-slate-50 dark:bg-slate-900">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16 observe-fade">
+      <span class="text-brand-600 dark:text-brand-400 font-semibold text-sm uppercase tracking-wider">Tính năng</span>
+      <h2 class="text-3xl sm:text-4xl font-bold mt-2 mb-4">Mọi thứ giáo viên cần</h2>
+      <p class="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Agenteach tích hợp đầy đủ công cụ soạn thảo, quản lý tài liệu và cá nhân hóa — ngay trên máy tính của bạn.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Feature 1 -->
+      <div class="observe-fade observe-fade-delay-1 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">📝</div>
+        <h3 class="font-bold text-lg mb-2">Soạn tài liệu bằng AI</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Giáo án, đề kiểm tra, bài tập, slide gợi ý — chỉ cần mô tả yêu cầu, AI soạn thảo ngay trong giây lát.</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="observe-fade observe-fade-delay-2 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">🗄️</div>
+        <h3 class="font-bold text-lg mb-2">Tài liệu nằm ngay trên máy bạn</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">AI đọc, chỉnh sửa và tạo mới tài liệu ngay trong thư mục của bạn. Không upload lên cloud, không lo rò rỉ dữ liệu học sinh.</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="observe-fade observe-fade-delay-3 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">📴</div>
+        <h3 class="font-bold text-lg mb-2">Dùng được khi mất mạng</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Cài AI trực tiếp trên máy tính, không cần kết nối internet. Tiết học vẫn tiếp tục dù wifi trường trục trặc.</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="observe-fade observe-fade-delay-4 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">🗂️</div>
+        <h3 class="font-bold text-lg mb-2">Tổ chức theo từng lớp học</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Mỗi lớp, môn học, học kỳ là một thư mục riêng. AI đọc hiểu toàn bộ tài liệu bên trong để trả lời đúng ngữ cảnh.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="observe-fade observe-fade-delay-5 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">🧠</div>
+        <h3 class="font-bold text-lg mb-2">Trí nhớ cá nhân hóa</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">AI ghi nhớ phong cách dạy học, thông tin lớp học, sở thích của bạn — ngày càng hiểu bạn hơn theo thời gian.</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="observe-fade observe-fade-delay-6 bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all">
+        <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/50 rounded-xl flex items-center justify-center mb-4 text-2xl">🔧</div>
+        <h3 class="font-bold text-lg mb-2">Dạy trợ lý theo cách của bạn</h3>
+        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">Tạo các hướng dẫn riêng — ví dụ: "soạn đề thi theo cấu trúc BGD" hay "luôn chia bài tập thành 3 mức độ" — để trợ lý làm đúng ý bạn mỗi lần.</p>
+      </div>
+    </div>
+
+    <!-- Extra highlight: HITL -->
+    <div class="mt-8 observe-fade bg-gradient-to-r from-brand-600 to-brand-700 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+      <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">🛡️</div>
+      <div class="flex-1">
+        <h3 class="font-bold text-white text-xl mb-1">AI không tự ý làm gì cả</h3>
+        <p class="text-blue-100 text-sm leading-relaxed">Mỗi khi trợ lý muốn đọc hoặc lưu file, bạn sẽ được hỏi trước. Bạn quyết định cho phép lần này, hôm nay, hay mãi mãi — hoàn toàn trong tầm kiểm soát.</p>
+      </div>
+      <div class="flex-shrink-0 hidden sm:block">
+        <div class="bg-white/10 border border-white/20 rounded-xl p-4 text-white text-xs font-mono w-48">
+          <div class="text-white/60 mb-2 text-xs">Agenteach muốn ghi:</div>
+          <div class="text-accent-400 mb-3">giao_an_tuan12.pdf</div>
+          <div class="flex gap-2">
+            <button class="flex-1 bg-green-500/80 rounded-lg py-1 text-center text-xs">Cho phép</button>
+            <button class="flex-1 bg-white/10 rounded-lg py-1 text-center text-xs">Từ chối</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section id="compare" class="py-24 bg-white dark:bg-slate-950">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16 observe-fade">
+      <span class="text-brand-600 dark:text-brand-400 font-semibold text-sm uppercase tracking-wider">So sánh</span>
+      <h2 class="text-3xl sm:text-4xl font-bold mt-2 mb-4">Tại sao không dùng ChatGPT?</h2>
+      <p class="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">Các công cụ AI phổ biến được thiết kế cho người dùng phổ thông. Agenteach được xây dựng chuyên biệt cho công việc của giáo viên.</p>
+    </div>
+
+    <div class="observe-fade overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg">
+      <table class="w-full min-w-[640px]">
+        <thead>
+          <tr class="border-b border-slate-200 dark:border-slate-700">
+            <th class="text-left px-6 py-4 text-slate-500 dark:text-slate-400 font-semibold text-sm w-48">Tiêu chí</th>
+            <th class="px-6 py-4 font-bold text-center highlight-col border-x border-brand-200 dark:border-brand-900">
+              <div class="flex flex-col items-center gap-1">
+                <div class="w-8 h-8 bg-brand-100 dark:bg-brand-900/50 rounded-lg flex items-center justify-center text-lg">🎓</div>
+                <span class="text-brand-700 dark:text-brand-300 text-base">Agenteach</span>
+              </div>
+            </th>
+            <th class="px-6 py-4 font-semibold text-center text-slate-600 dark:text-slate-300">
+              <div class="flex flex-col items-center gap-1">
+                <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-lg">🤖</div>
+                ChatGPT
+              </div>
+            </th>
+            <th class="px-6 py-4 font-semibold text-center text-slate-600 dark:text-slate-300">
+              <div class="flex flex-col items-center gap-1">
+                <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-lg">✨</div>
+                Gemini
+              </div>
+            </th>
+            <th class="px-6 py-4 font-semibold text-center text-slate-600 dark:text-slate-300">
+              <div class="flex flex-col items-center gap-1">
+                <div class="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-lg">📓</div>
+                NotebookLM
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+            <td class="px-6 py-4 text-sm font-medium">Tài liệu nằm trên máy bạn</td>
+            <td class="px-6 py-4 text-center highlight-col border-x border-brand-100 dark:border-brand-900/50"><span class="text-xl">✅</span></td>
+            <td class="px-6 py-4 text-center text-slate-400"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center text-slate-400"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center text-slate-400"><span class="text-xl">❌</span></td>
+          </tr>
+          <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+            <td class="px-6 py-4 text-sm font-medium">Hoạt động offline</td>
+            <td class="px-6 py-4 text-center highlight-col border-x border-brand-100 dark:border-brand-900/50"><span class="text-xl">✅</span></td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+          </tr>
+          <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+            <td class="px-6 py-4 text-sm font-medium">Nhớ phong cách giáo viên</td>
+            <td class="px-6 py-4 text-center highlight-col border-x border-brand-100 dark:border-brand-900/50"><span class="text-xl">✅</span></td>
+            <td class="px-6 py-4 text-center text-sm text-slate-500">⚠️ Giới hạn</td>
+            <td class="px-6 py-4 text-center text-sm text-slate-500">⚠️ Giới hạn</td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+          </tr>
+          <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+            <td class="px-6 py-4 text-sm font-medium">Tối ưu cho nghiệp vụ sư phạm</td>
+            <td class="px-6 py-4 text-center highlight-col border-x border-brand-100 dark:border-brand-900/50"><span class="text-xl">✅</span></td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center"><span class="text-xl">❌</span></td>
+            <td class="px-6 py-4 text-center text-sm text-slate-500">⚠️ Hạn chế</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Summary callout -->
+    <div class="mt-8 grid sm:grid-cols-3 gap-4">
+      <div class="observe-fade observe-fade-delay-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div class="text-2xl mb-2">🔒</div>
+        <h4 class="font-semibold mb-1">vs ChatGPT / Gemini</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Các dịch vụ cloud gửi nội dung bài giảng lên server nước ngoài. Agenteach giữ mọi dữ liệu trên máy bạn — tuyệt đối riêng tư.</p>
+      </div>
+      <div class="observe-fade observe-fade-delay-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div class="text-2xl mb-2">🎯</div>
+        <h4 class="font-semibold mb-1">vs NotebookLM</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">NotebookLM chỉ phân tích tài liệu. Agenteach còn viết, chỉnh sửa, xuất file và nhớ phong cách dạy học riêng của bạn.</p>
+      </div>
+      <div class="observe-fade observe-fade-delay-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div class="text-2xl mb-2">🏫</div>
+        <h4 class="font-semibold mb-1">Dành cho nhà trường</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Triển khai server AI nội bộ, cấp tài khoản cho giáo viên — mọi dữ liệu học sinh ở trong hệ thống của trường.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUIDE -->
+<section id="guide" class="py-24 bg-slate-50 dark:bg-slate-900">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16 observe-fade">
+      <span class="text-brand-600 dark:text-brand-400 font-semibold text-sm uppercase tracking-wider">Hướng dẫn cài đặt</span>
+      <h2 class="text-3xl sm:text-4xl font-bold mt-2 mb-4">Cấu hình kết nối AI</h2>
+      <p class="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Có hai cách để kết nối Agenteach với AI. Chọn phương án phù hợp với nhu cầu của bạn.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="observe-fade">
+      <div class="flex gap-2 mb-6 bg-slate-200 dark:bg-slate-800 rounded-xl p-1">
+        <button class="tab-btn active flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all" onclick="switchTab('ollama')">
+          <span>🖥️</span> Máy tính cá nhân
+        </button>
+        <button class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50" onclick="switchTab('server')">
+          <span>🌐</span> Máy chủ trung tâm
+        </button>
+      </div>
+
+      <!-- Tab: Ollama -->
+      <div id="tab-ollama" class="tab-content active">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div class="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🖥️</div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-bold text-lg">Máy tính cá nhân</h3>
+                  <span class="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full">Yêu cầu máy cá nhân cấu hình mạnh</span>
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">AI chạy trực tiếp trên máy tính này. Không cần internet, dữ liệu không rời khỏi máy tính của bạn.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 space-y-6">
+            <!-- Trước khi vào app -->
+            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+              <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Chuẩn bị trước — cài một lần duy nhất</p>
+              <div class="space-y-4">
+                <div class="flex gap-3">
+                  <div class="w-6 h-6 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">A</div>
+                  <div>
+                    <p class="text-sm font-medium mb-1">Tải và cài Ollama</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Ollama là phần mềm giúp chạy AI trên máy tính cá nhân. Tải miễn phí tại:</p>
+                    <a href="https://ollama.com" class="inline-flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-mono text-brand-600 dark:text-brand-400 hover:border-brand-400 transition-colors">
+                      🌐 ollama.com
+                    </a>
+                  </div>
+                </div>
+                <div class="flex gap-3">
+                  <div class="w-6 h-6 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">B</div>
+                  <div class="flex-1">
+                    <p class="text-sm font-medium mb-1">Tải mô hình AI về máy</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Mở Terminal (macOS) hoặc Command Prompt (Windows), chạy lệnh:</p>
+                    <div class="code-block text-xs">
+                      <span class="prompt">$ </span><span class="cmd">ollama pull gemma4:e2b</span>
+                    </div>
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Tải ~3GB, chỉ cần làm một lần. Nếu không chắc mô hình nào phù hợp, hãy hỏi bộ phận IT.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trong app: Step 1 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">1</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Mở Agenteach — màn hình "Kết nối AI" hiện ra</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Ứng dụng tự động hiển thị màn hình thiết lập khi khởi động lần đầu. Chọn <strong>"Máy tính cá nhân"</strong>.</p>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">2</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Nhấn "Kết nối"</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-3">Địa chỉ kết nối đã được điền sẵn — bạn không cần nhập gì thêm. Chỉ cần nhấn nút <strong>Kết nối</strong>.</p>
+                <!-- UI mockup -->
+                <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-2.5">
+                  <div class="flex items-center gap-3 p-2.5 border-2 border-brand-500 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+                    <div class="w-4 h-4 rounded-full border-2 border-brand-500 flex items-center justify-center flex-shrink-0">
+                      <div class="w-2 h-2 rounded-full bg-brand-500"></div>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-slate-800 dark:text-slate-200">Máy tính cá nhân</p>
+                      <p class="text-xs text-slate-500">AI chạy trực tiếp trên máy tính này. Không cần internet...</p>
+                    </div>
+                  </div>
+                  <button class="w-full py-2 bg-brand-600 text-white text-sm font-semibold rounded-lg">Kết nối</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">3</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Chọn mô hình và nhấn "Tiếp tục"</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Sau khi kết nối thành công, danh sách mô hình AI hiện ra. Chọn mô hình vừa tải ở bước chuẩn bị, rồi nhấn <strong>Tiếp tục</strong>.</p>
+                <div class="mt-2 flex items-center gap-2 text-green-600 dark:text-green-400 text-xs">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Kết nối thành công! Vui lòng chọn mô hình AI bên dưới để tiếp tục.
+                </div>
+              </div>
+            </div>
+
+            <!-- Lỗi kết nối -->
+            <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-4">
+              <p class="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-1">Nếu báo "Không kết nối được"</p>
+              <ul class="text-xs text-orange-700 dark:text-orange-400 space-y-1 list-disc list-inside">
+                <li>Kiểm tra Ollama đã được mở chưa (biểu tượng trên thanh taskbar)</li>
+                <li>Xác nhận đã tải xong mô hình bằng lệnh <code class="bg-orange-100 dark:bg-orange-900/50 px-1 rounded">ollama list</code></li>
+                <li>Liên hệ bộ phận IT để được hỗ trợ chi tiết</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Server -->
+      <div id="tab-server" class="tab-content">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-6 py-5 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🌐</div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-bold text-lg">Máy chủ trung tâm</h3>
+                  <span class="bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded-full">Dành cho máy cá nhân cấu hình yếu</span>
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Kết nối với AI do nhà trường hoặc đơn vị cung cấp quản lý. Liên hệ bộ phận IT để lấy địa chỉ máy chủ và mã kết nối.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 space-y-6">
+            <!-- Step 1 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">1</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Nhận 2 thông tin từ bộ phận IT của trường</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-3">Nhắn cho bộ phận IT: <em>"Tôi cần địa chỉ máy chủ AI và mã kết nối để dùng Agenteach."</em> Họ sẽ cung cấp:</p>
+                <div class="grid sm:grid-cols-2 gap-3">
+                  <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                    <div class="text-brand-600 dark:text-brand-400 font-semibold text-sm mb-1">📍 Địa chỉ máy chủ</div>
+                    <div class="text-slate-500 dark:text-slate-400 text-xs">Còn gọi là "Base URL" hoặc "API URL"<br/>Ví dụ: <span class="font-mono">https://ai.truongtoi.edu.vn/v1</span></div>
+                  </div>
+                  <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                    <div class="text-brand-600 dark:text-brand-400 font-semibold text-sm mb-1">🔑 Mã kết nối</div>
+                    <div class="text-slate-500 dark:text-slate-400 text-xs">Còn gọi là "API Key" — giống như mật khẩu<br/>Ví dụ: <span class="font-mono">sk-abc123...</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">2</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Mở Agenteach — chọn "Máy chủ trung tâm"</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Ứng dụng tự động hiển thị màn hình thiết lập khi khởi động lần đầu. Chọn <strong>"Máy chủ trung tâm"</strong> rồi điền địa chỉ và mã kết nối vào 2 ô bên dưới.</p>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex gap-4">
+              <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">3</div>
+              <div class="flex-1">
+                <h4 class="font-semibold mb-1">Nhấn "Kết nối" và chọn mô hình</h4>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-3">Sau khi điền xong, nhấn <strong>Kết nối</strong>. Nếu thành công, danh sách mô hình AI sẽ hiện ra — chọn một mô hình và nhấn <strong>Tiếp tục</strong>.</p>
+                <!-- UI mockup -->
+                <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-2.5">
+                  <div class="flex items-center gap-3 p-2.5 border-2 border-brand-500 bg-brand-50 dark:bg-brand-900/20 rounded-lg">
+                    <div class="w-4 h-4 rounded-full border-2 border-brand-500 flex items-center justify-center flex-shrink-0">
+                      <div class="w-2 h-2 rounded-full bg-brand-500"></div>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-slate-800 dark:text-slate-200">Máy chủ trung tâm</p>
+                      <p class="text-xs text-slate-500">Kết nối với AI do nhà trường... quản lý</p>
+                    </div>
+                  </div>
+                  <input type="text" class="w-full px-3 py-2 text-xs font-mono border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-400" placeholder="Địa chỉ (https://api.example.com/v1)" readonly />
+                  <input type="password" class="w-full px-3 py-2 text-xs font-mono border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-400" placeholder="API Key" readonly />
+                  <button class="w-full py-2 bg-brand-600 text-white text-sm font-semibold rounded-lg">Kết nối</button>
+                </div>
+                <div class="mt-2 flex items-center gap-2 text-green-600 dark:text-green-400 text-xs">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Kết nối thành công! Vui lòng chọn mô hình AI bên dưới để tiếp tục.
+                </div>
+              </div>
+            </div>
+
+            <!-- Lỗi kết nối -->
+            <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-4">
+              <p class="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-1">Nếu báo "Không kết nối được"</p>
+              <ul class="text-xs text-orange-700 dark:text-orange-400 space-y-1 list-disc list-inside">
+                <li>Kiểm tra địa chỉ máy chủ có chính xác không</li>
+                <li>Kiểm tra mã kết nối (API Key) có hợp lệ không</li>
+                <li>Liên hệ bộ phận IT để được hỗ trợ chi tiết</li>
+              </ul>
+            </div>
+
+            <!-- School note -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4">
+              <div class="flex gap-3">
+                <span class="text-xl">🏫</span>
+                <div>
+                  <h5 class="font-semibold text-blue-800 dark:text-blue-300 text-sm mb-1">Dành cho bộ phận IT nhà trường</h5>
+                  <p class="text-blue-700 dark:text-blue-400 text-xs leading-relaxed">Triển khai Ollama Server hoặc bất kỳ API tương thích OpenAI (LM Studio, vLLM, LocalAI…) trong mạng nội bộ. Cấp Base URL và API Key cho từng giáo viên. Toàn bộ dữ liệu ở lại trong hệ thống nhà trường.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bước chung: Hồ sơ + Workspace -->
+      <div class="mt-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sau khi kết nối thành công — hai bước tiếp theo (giống nhau cho cả hai cách)</p>
+        </div>
+        <div class="p-6 grid sm:grid-cols-2 gap-6">
+          <div class="flex gap-4">
+            <div class="w-8 h-8 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">4</div>
+            <div>
+              <h4 class="font-semibold mb-1 flex items-center gap-2">Cho trợ lý biết về bạn <span class="text-lg">👤</span></h4>
+              <p class="text-slate-500 dark:text-slate-400 text-sm">Điền <strong>tên của bạn</strong> (bắt buộc) và môn dạy (không bắt buộc). Trợ lý dùng thông tin này để xưng hô và cá nhân hoá câu trả lời. Có thể thay đổi sau trong Cài đặt.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-8 h-8 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">5</div>
+            <div>
+              <h4 class="font-semibold mb-1 flex items-center gap-2">Chọn thư mục làm việc <span class="text-lg">📁</span></h4>
+              <p class="text-slate-500 dark:text-slate-400 text-sm">Trỏ đến thư mục chứa tài liệu giảng dạy của bạn — trợ lý sẽ tìm và đọc file trong đó. Đặt tên dễ nhớ như <em>"Tài liệu Toán 10"</em>. Có thể bỏ qua và tạo sau.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<section id="workflow" class="py-24 bg-white dark:bg-slate-950">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-16 observe-fade">
+      <span class="text-brand-600 dark:text-brand-400 font-semibold text-sm uppercase tracking-wider">Quy trình</span>
+      <h2 class="text-3xl sm:text-4xl font-bold mt-2 mb-4">Từ yêu cầu đến tài liệu — trong vài phút</h2>
+      <p class="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Agenteach tự động hoá quy trình soạn thảo từ đầu đến cuối, giúp bạn tập trung vào giảng dạy thay vì làm giấy tờ.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Steps -->
+      <div class="observe-fade observe-fade-delay-1 relative bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+          <div class="text-2xl">🗂️</div>
+        </div>
+        <h4 class="font-bold mb-2">Chọn thư mục lớp học</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Trỏ vào thư mục chứa tài liệu của lớp. Trợ lý sẽ đọc và hiểu toàn bộ nội dung có sẵn.</p>
+      </div>
+
+      <div class="observe-fade observe-fade-delay-2 relative bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+          <div class="text-2xl">💬</div>
+        </div>
+        <h4 class="font-bold mb-2">Đặt yêu cầu</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Nói chuyện tự nhiên: "Soạn giáo án tuần này", "Tạo đề kiểm tra 15 phút chương 3"…</p>
+      </div>
+
+      <div class="observe-fade observe-fade-delay-3 relative bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+          <div class="text-2xl">🔍</div>
+        </div>
+        <h4 class="font-bold mb-2">Trợ lý tự đọc tài liệu</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Trợ lý tự tìm và đọc các file liên quan trong thư mục để hiểu đúng nội dung trước khi soạn bài.</p>
+      </div>
+
+      <div class="observe-fade observe-fade-delay-4 relative bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
+          <div class="text-2xl">✍️</div>
+        </div>
+        <h4 class="font-bold mb-2">Trợ lý soạn ngay</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Câu chữ xuất hiện từng dòng ngay trước mắt bạn — không cần chờ, không bị treo màn hình.</p>
+      </div>
+
+      <div class="observe-fade observe-fade-delay-5 relative bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center text-sm font-bold">5</div>
+          <div class="text-2xl">👁️</div>
+        </div>
+        <h4 class="font-bold mb-2">Đọc lại ngay trong ứng dụng</h4>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Xem nội dung ngay bên cạnh cuộc trò chuyện — kể cả file Word và PDF — mà không cần mở phần mềm khác.</p>
+      </div>
+
+      <div class="observe-fade observe-fade-delay-6 relative bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-6 border border-brand-500">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-8 h-8 bg-white/20 text-white rounded-full flex items-center justify-center text-sm font-bold">6</div>
+          <div class="text-2xl">💾</div>
+        </div>
+        <h4 class="font-bold text-white mb-2">Lưu vào thư mục lớp học</h4>
+        <p class="text-blue-100 text-sm">File được lưu thẳng vào thư mục — mở Word chỉnh tiếp, in ngay, hoặc chia sẻ cho đồng nghiệp.</p>
+      </div>
+    </div>
+
+    <!-- Example prompt box -->
+    <div class="mt-12 observe-fade bg-slate-900 dark:bg-slate-900 rounded-2xl p-6 sm:p-8">
+      <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-4">Ví dụ — Yêu cầu thực tế</div>
+      <div class="space-y-4">
+        <div class="flex gap-3 items-start">
+          <div class="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs flex-shrink-0">👤</div>
+          <div class="bg-slate-700 rounded-2xl rounded-tl-none px-4 py-2.5 text-sm text-slate-200">
+            Soạn giáo án cho tiết học hàm số bậc hai (45 phút), theo phương pháp phát hiện và giải quyết vấn đề. Học sinh lớp 10A, đã học đại cương về hàm số.
+          </div>
+        </div>
+        <div class="flex gap-3 items-start">
+          <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">A</div>
+          <div class="flex-1">
+            <div class="flex gap-2 flex-wrap mb-2">
+              <span class="bg-green-500/20 border border-green-500/30 text-green-400 text-xs px-2 py-0.5 rounded-full">🔍 Tìm kiếm: chuong_ham_so.pdf</span>
+              <span class="bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs px-2 py-0.5 rounded-full">📖 Đọc: chuong_ham_so.pdf</span>
+              <span class="bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs px-2 py-0.5 rounded-full">📄 Tạo PDF: giao_an_ham_so_bac_hai.pdf</span>
+            </div>
+            <div class="bg-slate-800 rounded-2xl rounded-tl-none px-4 py-2.5 text-sm text-slate-200">
+              Đã soạn xong giáo án 45 phút theo phương pháp phát hiện và giải quyết vấn đề. File đã lưu vào <span class="text-accent-400 font-mono text-xs">Toán 10A/giao_an_ham_so_bac_hai.pdf</span>. Giáo án gồm: mục tiêu, thiết bị dạy học, tiến trình 5 hoạt động, câu hỏi kiểm tra và bài tập về nhà.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download" class="py-24 gradient-hero relative overflow-hidden">
+  <div class="blob w-80 h-80 bg-blue-300 top-0 -right-20"></div>
+  <div class="blob w-64 h-64 bg-orange-400 bottom-0 left-10"></div>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
+    <div class="observe-fade">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-card text-white text-sm mb-6">
+        🎉 Miễn phí hoàn toàn
+      </div>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-4">Bắt đầu ngay hôm nay</h2>
+      <p class="text-blue-100 text-lg max-w-xl mx-auto mb-10">Tải Agenteach về máy, cài đặt trong 5 phút và soạn bài đầu tiên cùng AI trợ lý.</p>
+
+      <!-- Download buttons -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+        <a href="#" class="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white hover:bg-blue-50 text-brand-700 font-bold text-base rounded-2xl transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          macOS (.dmg)
+        </a>
+        <a href="#" class="inline-flex items-center justify-center gap-3 px-8 py-4 glass-card hover:bg-white/15 text-white font-bold text-base rounded-2xl transition-all">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12V6.75l9-5.25 9 5.25V12l-9 5.25L3 12z" opacity=".7"/><path d="M12 12l9-5.25V12l-9 5.25V12z" opacity=".4"/></svg>
+          Windows (.exe)
+        </a>
+      </div>
+
+      <!-- System requirements -->
+      <div class="glass-card rounded-2xl p-6 max-w-2xl mx-auto text-left">
+        <h4 class="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Yêu cầu hệ thống
+        </h4>
+        <div class="grid sm:grid-cols-2 gap-4 text-sm">
+          <div>
+            <div class="text-blue-200 font-semibold text-xs mb-2">🖥️ Dùng offline (máy tính cá nhân)</div>
+            <ul class="space-y-1.5 text-blue-100">
+              <li class="flex gap-2"><span class="text-green-400">✓</span> Máy có card đồ họa rời (GPU) mạnh</li>
+              <li class="flex gap-2"><span class="text-green-400">✓</span> Còn trống ≥ 10GB trên ổ cứng</li>
+              <li class="flex gap-2"><span class="text-green-400">✓</span> macOS 12+ hoặc Windows 10+</li>
+              <li class="flex gap-2 text-blue-300/70 text-xs"><span>💡</span> Không chắc máy đủ mạnh? Hỏi bộ phận IT.</li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-blue-200 font-semibold text-xs mb-2">🌐 Dùng máy chủ trung tâm</div>
+            <ul class="space-y-1.5 text-blue-100">
+              <li class="flex gap-2"><span class="text-green-400">✓</span> Máy tính bình thường là đủ</li>
+              <li class="flex gap-2"><span class="text-green-400">✓</span> Kết nối được mạng của trường</li>
+              <li class="flex gap-2"><span class="text-green-400">✓</span> macOS 12+ hoặc Windows 10+</li>
+              <li class="flex gap-2 text-blue-300/70 text-xs"><span>💡</span> Phù hợp nếu trường đã triển khai AI.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- macOS note -->
+      <div class="mt-6 glass-card rounded-xl px-5 py-4 max-w-lg mx-auto text-left">
+        <p class="text-white font-semibold text-sm mb-1">🍎 macOS: Nếu xuất hiện thông báo "không thể mở"</p>
+        <p class="text-blue-200 text-xs leading-relaxed">Đây là cảnh báo thông thường với phần mềm tải ngoài App Store. Mở <strong>Terminal</strong> (tìm trong Spotlight bằng ⌘+Space), dán lệnh bên dưới rồi nhấn Enter:</p>
+        <code class="block mt-2 text-accent-400 text-xs font-mono bg-white/5 rounded-lg px-3 py-2">xattr -cr /Applications/Agenteach.app</code>
+        <p class="text-blue-300/60 text-xs mt-1">Sau đó mở lại ứng dụng bình thường.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-slate-950 text-slate-400 py-12">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-2 text-white font-bold">
+        <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="28" height="28" rx="7" fill="#2563eb"/>
+          <path d="M8 20 L14 8 L20 20" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M10.5 15.5 L17.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Agenteach
+      </div>
+      <div class="flex items-center gap-6 text-sm">
+        <a href="#features" class="hover:text-white transition-colors">Tính năng</a>
+        <a href="#compare" class="hover:text-white transition-colors">So sánh</a>
+        <a href="#guide" class="hover:text-white transition-colors">Hướng dẫn</a>
+      </div>
+    </div>
+    <div class="mt-8 pt-8 border-t border-slate-800 text-center text-xs text-slate-600">
+      © 2026 Agenteach
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Dark mode
+  function toggleDark() {
+    document.documentElement.classList.toggle('dark')
+    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+  }
+  // Init dark mode
+  if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark')
+  }
+
+  // Tab switching
+  function switchTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'))
+    document.querySelectorAll('.tab-btn').forEach(el => {
+      el.classList.remove('active')
+      el.classList.add('text-slate-600', 'dark:text-slate-300')
+    })
+    document.getElementById('tab-' + id).classList.add('active')
+    event.currentTarget.classList.add('active')
+    event.currentTarget.classList.remove('text-slate-600', 'dark:text-slate-300')
+  }
+
+  // Intersection Observer for fade-in animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible')
+      }
+    })
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' })
+
+  document.querySelectorAll('.observe-fade').forEach(el => observer.observe(el))
+</script>
+
+</body>
+</html>

@@ -69,6 +69,12 @@ export interface Artifact {
   createdAt: number;
 }
 
+export interface WorkspaceFile {
+  name: string;
+  rel: string; // relative path from workspace root
+  isDir: boolean;
+}
+
 export interface PreviewData {
   type: "md" | "pdf" | "docx";
   fileName: string;
@@ -127,6 +133,7 @@ declare global {
       listWorkspaces(): Promise<Workspace[]>;
       setActiveWorkspace(id: string): Promise<void>;
       deleteWorkspace(id: string): Promise<void>;
+      listWorkspaceFiles(workspaceId: string, wsPath: string): Promise<WorkspaceFile[]>;
 
       listSessions(workspaceId: string): Promise<Session[]>;
       createSession(workspaceId: string): Promise<Session>;

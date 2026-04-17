@@ -114,15 +114,15 @@ export default function PreviewPanel({ data, onClose }: Props) {
   }, []);
 
   return (
-    <div className="flex h-full flex-shrink-0" style={{ width }}>
+    <div className="flex h-full shrink-0" style={{ width }}>
       {/* Resize handle */}
       <div
         onMouseDown={onMouseDown}
-        className="w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors flex-shrink-0"
+        className="w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors shrink-0"
       />
       <div className="flex flex-col flex-1 border-l overflow-hidden">
         {/* Header */}
-        <div className="flex items-center pl-4 p-2 border-b flex-shrink-0">
+        <div className="flex items-center pl-4 p-2 border-b shrink-0">
           <span
             className="flex-1 text-sm font-medium truncate"
             title={data.filePath}

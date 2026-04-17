@@ -91,6 +91,8 @@ contextBridge.exposeInMainWorld("api", {
   setActiveWorkspace: (id: string) =>
     ipcRenderer.invoke("workspace:setActive", id),
   deleteWorkspace: (id: string) => ipcRenderer.invoke("workspace:delete", id),
+  listWorkspaceFiles: (workspaceId: string, wsPath: string) =>
+    ipcRenderer.invoke("workspace:listFiles", workspaceId, wsPath),
 
   // Sessions
   listSessions: (workspaceId: string) =>

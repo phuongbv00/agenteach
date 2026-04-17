@@ -4,8 +4,8 @@ import {
   ChevronDown,
   FolderOpen,
   GraduationCap,
-  Plus,
   Square,
+  X,
 } from "lucide-react";
 import { useChatStore } from "../stores/chatStore";
 import type { MessageUIBlock } from "../stores/chatStore";
@@ -16,7 +16,10 @@ import {
   StreamingBubble,
   ToolCallBubble,
 } from "./MessageBubble";
+import { FileMentionPicker } from "./FileMentionPicker";
+import type { WorkspaceFile } from "@/renderer/types/api";
 import { Button } from "@/renderer/components/ui/button";
+import { Badge } from "@/renderer/components/ui/badge";
 import { Textarea } from "@/renderer/components/ui/textarea";
 import {
   DropdownMenu,
@@ -46,6 +49,7 @@ export default function ChatPanel() {
   } = useChatStore();
   const { activeWorkspace, activeSessionId, config, setConfig } = useAppStore();
   const [input, setInput] = useState("");
+  const [mentionedFiles, setMentionedFiles] = useState<WorkspaceFile[]>([]);
   const selectedModel = config?.selectedModel ?? "";
   const [models, setModels] = useState<string[]>([]);
   const [, setFileProgress] = useState<{
@@ -117,10 +121,21 @@ export default function ChatPanel() {
   }, []);
 
   const send = async () => {
-    const content = input.trim();
-    if (!content || isStreaming) return;
+    const text = input.trim();
+    if ((!text && mentionedFiles.length === 0) || isStreaming || !activeWorkspace)
+      return;
+
+    const wsPath = activeWorkspace.path;
+    const sep = wsPath.includes("/") ? "/" : "\\";
+    const mentionPrefix = mentionedFiles
+      .map((f) => `@${wsPath}${sep}${f.rel}`)
+      .join(" ");
+    const content = mentionPrefix
+      ? mentionPrefix + (text ? "\n" + text : "")
+      : text;
 
     setInput("");
+    setMentionedFiles([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -138,6 +153,15 @@ export default function ChatPanel() {
         selectedModel || undefined,
       )
       .catch(() => finalizeAssistantMessage());
+  };
+
+  const handleFilesSelected = (files: WorkspaceFile[]) => {
+    setMentionedFiles((prev) => {
+      const existingRels = new Set(prev.map((f) => f.rel));
+      const newFiles = files.filter((f) => !existingRels.has(f.rel));
+      return [...prev, ...newFiles];
+    });
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -254,6 +278,29 @@ export default function ChatPanel() {
       <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none">
         <div className="max-w-2xl mx-auto pointer-events-auto">
           <div className="bg-background shadow-lg p-3 border">
+            {mentionedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {mentionedFiles.map((f) => (
+                  <Badge
+                    key={f.rel}
+                    variant="secondary"
+                    className="gap-1 pr-1 text-xs"
+                  >
+                    <span className="max-w-32 truncate">{f.name}</span>
+                    <button
+                      onClick={() =>
+                        setMentionedFiles((prev) =>
+                          prev.filter((x) => x.rel !== f.rel),
+                        )
+                      }
+                      className="hover:text-destructive transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
             <Textarea
               ref={textareaRef}
               value={input}
@@ -270,9 +317,11 @@ export default function ChatPanel() {
               }}
             />
             <div className="flex items-end mt-3 gap-2">
-              <Button variant="ghost" size="icon-sm">
-                <Plus size={16} />
-              </Button>
+              <FileMentionPicker
+                workspaceId={activeWorkspace.id}
+                workspacePath={activeWorkspace.path}
+                onConfirm={handleFilesSelected}
+              />
               <div className="flex-1" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -321,7 +370,7 @@ export default function ChatPanel() {
                 <Button
                   size="icon-sm"
                   className="rounded-xl shrink-0"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() && mentionedFiles.length === 0}
                   onClick={send}
                 >
                   <ArrowUp size={14} strokeWidth={2.5} />

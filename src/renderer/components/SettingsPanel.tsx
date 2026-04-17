@@ -309,11 +309,11 @@ export default function SettingsPanel({ onClose }: Props) {
           <>
             {isNewPlugin && (
               <div className="flex items-center gap-3">
-                <Label className="text-xs w-20 flex-shrink-0">
+                <Label className="text-xs w-20 shrink-0">
                   ID <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  value={editingPlugin.id}
+                  value={editingPlugin?.id || ""}
                   onChange={(e) =>
                     setEditingPlugin((prev) =>
                       prev ? { ...prev, id: e.target.value } : null,
@@ -325,7 +325,7 @@ export default function SettingsPanel({ onClose }: Props) {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">
+              <Label className="text-xs w-20 shrink-0">
                 Tên <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -340,7 +340,7 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">
+              <Label className="text-xs w-20 shrink-0">
                 Mô tả <span className="text-destructive">*</span>
               </Label>
               <Textarea
@@ -378,7 +378,7 @@ export default function SettingsPanel({ onClose }: Props) {
           <>
             {isNewPlugin && (
               <div className="flex items-center gap-3">
-                <Label className="text-xs w-20 flex-shrink-0">
+                <Label className="text-xs w-20 shrink-0">
                   ID <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -394,7 +394,7 @@ export default function SettingsPanel({ onClose }: Props) {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">URL</Label>
+              <Label className="text-xs w-20 shrink-0">URL</Label>
               <Input
                 value={editingPlugin.url || ""}
                 onChange={(e) =>
@@ -407,7 +407,7 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">Command</Label>
+              <Label className="text-xs w-20 shrink-0">Command</Label>
               <Input
                 value={editingPlugin.command || ""}
                 onChange={(e) =>
@@ -420,7 +420,7 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
             <div className="flex items-center gap-3">
-              <Label className="text-xs w-20 flex-shrink-0">Args</Label>
+              <Label className="text-xs w-20 shrink-0">Args</Label>
               <Input
                 value={editArgs}
                 onChange={(e) => setEditArgs(e.target.value)}
@@ -429,7 +429,7 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
             <div className="flex items-start gap-3">
-              <Label className="text-xs w-20 flex-shrink-0 pt-1.5">Env</Label>
+              <Label className="text-xs w-20 shrink-0 pt-1.5">Env</Label>
               <Textarea
                 value={editEnv}
                 onChange={(e) => setEditEnv(e.target.value)}
@@ -516,7 +516,7 @@ export default function SettingsPanel({ onClose }: Props) {
                       }}
                     >
                       <button
-                        className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${p.id === activeProviderId ? "border-primary" : "border-muted-foreground/40"}`}
+                        className={`w-4 h-4 rounded-full border shrink-0 flex items-center justify-center ${p.id === activeProviderId ? "border-primary" : "border-muted-foreground/40"}`}
                       >
                         {p.id === activeProviderId && (
                           <div className="w-2.5 h-2.5 rounded-full bg-primary" />
@@ -590,7 +590,7 @@ export default function SettingsPanel({ onClose }: Props) {
                     ] as const
                   ).map(({ label, key, placeholder, mono }) => (
                     <div key={key} className="flex items-center gap-3">
-                      <Label className="text-xs w-16 flex-shrink-0">
+                      <Label className="text-xs w-16 shrink-0">
                         {label}
                       </Label>
                       <Input
@@ -767,7 +767,7 @@ export default function SettingsPanel({ onClose }: Props) {
                       <Button
                         variant="ghost"
                         size="xs"
-                        className="text-primary h-7 flex-shrink-0"
+                        className="text-primary h-7 shrink-0"
                         onClick={() =>
                           openEditForm({ ...EMPTY_SKILL, id: "" }, true)
                         }
@@ -811,7 +811,7 @@ export default function SettingsPanel({ onClose }: Props) {
                                 /{p.id}
                               </span>
                             </div>
-                            <div className="flex gap-1 flex-shrink-0">
+                            <div className="flex gap-1 shrink-0">
                               {p.builtin ? (
                                 <Button
                                   variant="ghost"
@@ -876,7 +876,7 @@ export default function SettingsPanel({ onClose }: Props) {
                       <Button
                         variant="ghost"
                         size="xs"
-                        className="text-primary h-7 flex-shrink-0"
+                        className="text-primary h-7 shrink-0"
                         onClick={() =>
                           openEditForm({ ...EMPTY_MCP, id: "" }, true)
                         }
@@ -922,13 +922,13 @@ export default function SettingsPanel({ onClose }: Props) {
                               {(p.command || p.url) && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] font-mono font-normal flex-shrink-0 max-w-[160px] truncate"
+                                  className="text-[10px] font-mono font-normal shrink-0 max-w-40 truncate"
                                 >
                                   {p.url ?? p.command}
                                 </Badge>
                               )}
                             </div>
-                            <div className="flex gap-1 flex-shrink-0">
+                            <div className="flex gap-1 shrink-0">
                               <Button
                                 variant="ghost"
                                 size="icon-sm"

@@ -13,6 +13,7 @@ import { SessionStore } from "../sessions/SessionStore";
 import { ArtifactStore } from "../sessions/ArtifactStore";
 import { runAgent, cancelAgent } from "../agent/Orchestrator";
 import { resolveToolLabel } from "../agent/tools/labels";
+import { getWorkspaceIndex } from "../agent/WorkspaceIndex";
 
 export function registerHandlers(win: BrowserWindow): void {
   // System
@@ -118,6 +119,13 @@ export function registerHandlers(win: BrowserWindow): void {
       appConfig.update({ activeWorkspaceId: remaining[0]?.id ?? null });
     }
   });
+  ipcMain.handle(
+    "workspace:listFiles",
+    (_e, workspaceId: string, wsPath: string) => {
+      const idx = getWorkspaceIndex(workspaceId, wsPath);
+      return idx.getFiles();
+    },
+  );
 
   // Sessions
   ipcMain.handle("session:list", (_e, workspaceId: string) => {

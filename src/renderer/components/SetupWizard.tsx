@@ -236,7 +236,7 @@ export default function SetupWizard({ onComplete }: Props) {
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                      className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
                         selectedPresetId === p.id
                           ? "border-primary"
                           : "border-border"
@@ -482,7 +482,7 @@ export default function SetupWizard({ onComplete }: Props) {
 
                 {wsPath ? (
                   <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
-                    <Folder size={14} className="text-primary flex-shrink-0" />
+                    <Folder size={14} className="text-primary shrink-0" />
                     <span className="text-sm text-primary font-mono truncate flex-1">
                       {wsPath}
                     </span>

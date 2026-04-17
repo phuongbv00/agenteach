@@ -189,9 +189,9 @@ export default function WorkspaceSidebar({
   };
 
   return (
-    <div className="flex flex-col h-full bg-sidebar w-60 flex-shrink-0 border-r">
+    <div className="flex flex-col h-full bg-sidebar w-60 shrink-0 border-r">
       {/* Workspaces section */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <div className="px-3 py-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Workspace
@@ -210,9 +210,9 @@ export default function WorkspaceSidebar({
             >
               <div className="flex items-center gap-2 min-w-0">
                 {activeWorkspace?.id === ws.id ? (
-                  <FolderOpen size={14} className="flex-shrink-0" />
+                  <FolderOpen size={14} className="shrink-0" />
                 ) : (
-                  <Folder size={14} className="flex-shrink-0" />
+                  <Folder size={14} className="shrink-0" />
                 )}
                 <span className="text-sm truncate">{ws.name}</span>
               </div>
@@ -220,7 +220,7 @@ export default function WorkspaceSidebar({
                 variant="ghost"
                 size="icon-xs"
                 onClick={(e) => handleDeleteWorkspace(e, ws.id)}
-                className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0 -mr-1"
+                className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent shrink-0 -mr-1"
               >
                 <X size={14} />
               </Button>
@@ -278,7 +278,7 @@ export default function WorkspaceSidebar({
 
       {/* Sessions section */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="px-3 py-2 flex items-center justify-between flex-shrink-0">
+        <div className="px-3 py-2 flex items-center justify-between shrink-0">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Phiên làm việc
           </span>
@@ -337,7 +337,7 @@ export default function WorkspaceSidebar({
                     variant="ghost"
                     size="icon-xs"
                     onClick={(e) => handleDeleteSession(e, session.id)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0 -mr-1"
+                    className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent shrink-0 -mr-1"
                   >
                     <X size={14} />
                   </Button>
@@ -351,7 +351,7 @@ export default function WorkspaceSidebar({
       {/* Artifacts section */}
       {activeSessionId && (
         <Collapsible open={artifactsOpen} onOpenChange={setArtifactsOpen}>
-          <div className="border-t flex-shrink-0">
+          <div className="border-t shrink-0">
             <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider transition-colors">
               <span>Tài liệu đã tạo {artifacts.length ? `(${artifacts.length})` : ""}</span>
               {artifactsOpen ? (
@@ -362,7 +362,7 @@ export default function WorkspaceSidebar({
             </CollapsibleTrigger>
           </div>
           <CollapsibleContent>
-            <div className="flex-shrink-0 max-h-44 overflow-y-auto px-2 pb-2 space-y-0.5">
+            <div className="shrink-0 max-h-44 overflow-y-auto px-2 pb-2 space-y-0.5">
               {artifacts.length === 0 && (
                 <p className="text-xs text-muted-foreground py-1 px-2">Chưa có tài liệu nào</p>
               )}
@@ -397,7 +397,7 @@ export default function WorkspaceSidebar({
                       size="icon-xs"
                       title="Mở bằng ứng dụng mặc định"
                       onClick={(e) => { e.stopPropagation(); window.api.openFile(artifact.filePath); }}
-                      className="opacity-0 group-hover:opacity-100 hover:text-sidebar-primary hover:bg-transparent flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 hover:text-sidebar-primary hover:bg-transparent shrink-0"
                     >
                       <ExternalLink size={12} />
                     </Button>
@@ -406,7 +406,7 @@ export default function WorkspaceSidebar({
                       size="icon-xs"
                       title="Xoá khỏi danh sách"
                       onClick={(e) => handleDeleteArtifact(e, artifact)}
-                      className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-transparent shrink-0"
                     >
                       <X size={10} />
                     </Button>
@@ -419,7 +419,7 @@ export default function WorkspaceSidebar({
       )}
 
       {/* Settings button */}
-      <div className="border-t p-2 flex-shrink-0">
+      <div className="border-t p-2 shrink-0">
         <button
           onClick={onOpenSettings}
           className="w-full flex items-center gap-2 p-2 hover:bg-muted transition-colors text-sm"
