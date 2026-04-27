@@ -125,10 +125,9 @@ export default function ChatPanel() {
     if ((!text && mentionedFiles.length === 0) || isStreaming || !activeWorkspace)
       return;
 
-    const wsPath = activeWorkspace.path;
-    const sep = wsPath.includes("/") ? "/" : "\\";
+    const wsPath = activeWorkspace.path.replace(/\\/g, "/");
     const mentionPrefix = mentionedFiles
-      .map((f) => `@${wsPath}${sep}${f.rel}`)
+      .map((f) => `@${wsPath}/${f.rel.replace(/\\/g, "/")}`)
       .join(" ");
     const content = mentionPrefix
       ? mentionPrefix + (text ? "\n" + text : "")

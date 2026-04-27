@@ -9,9 +9,11 @@ interface CacheMeta {
 }
 
 function cacheContentPath(filePath: string): string {
-  // Strip leading slash so path.join works correctly
-  const relative = filePath.startsWith("/") ? filePath.slice(1) : filePath;
-  const base = path.join(CACHE_ROOT, "fs_read_file", relative);
+  // Normalize to forward slashes; encode drive letter (C:/ → C/) to keep it in the key
+  // without the colon, then strip the leading slash on Unix paths.
+  const normalized = filePath.replace(/\\/g, "/");
+  const stripped = normalized.replace(/^([A-Za-z]):\//, "$1/").replace(/^\//, "");
+  const base = path.join(CACHE_ROOT, "fs_read_file", stripped);
   // Parsed binary formats are stored as Markdown: file.pdf → file.pdf.md
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".pdf" || ext === ".docx") return base + ".md";

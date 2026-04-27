@@ -41,7 +41,7 @@ export function buildSystemPrompt(_memory: string, workspace: Workspace): string
   parts.push(
     fill(workspaceTpl, {
       WORKSPACE_NAME: workspace.name,
-      WORKSPACE_PATH: workspace.path,
+      WORKSPACE_PATH: workspace.path.replace(/\\/g, "/"),
     }),
   );
 
