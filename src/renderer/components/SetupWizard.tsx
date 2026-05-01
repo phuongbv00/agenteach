@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react"
+import { useState, useEffect, useRef, Fragment } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -45,7 +45,9 @@ export default function SetupWizard({ onComplete }: Props) {
   const [modelDir, setModelDir] = useState("")
   const [installPhase, setInstallPhase] = useState<InstallPhase>("idle")
   const [installProgress, setInstallProgress] = useState(0)
-  const [installPhaseLabel, setInstallPhaseLabel] = useState("")
+  const [installLogs, setInstallLogs] = useState<string[]>([])
+  const [installBytes, setInstallBytes] = useState<{ dl: number; total: number } | null>(null)
+  const logsEndRef = useRef<HTMLDivElement>(null)
 
   // ── Step 3: AI setup (remote) ────────────────────────────────
   const [customUrl, setCustomUrl] = useState("")
@@ -70,6 +72,10 @@ export default function SetupWizard({ onComplete }: Props) {
       setModelDir(root + "/models")
     })
   }, [])
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [installLogs])
 
   const MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
 
@@ -112,11 +118,19 @@ export default function SetupWizard({ onComplete }: Props) {
     const modelPath = effectiveModelPath()
     setInstallPhase("installing")
     setInstallProgress(0)
-    setInstallPhaseLabel("Đang chuẩn bị...")
+    setInstallLogs(["Đang chuẩn bị..."])
 
-    window.api.onLlamacppProgress(({ phase, percent }) => {
-      setInstallPhaseLabel(phase)
+    window.api.onLlamacppProgress(({ phase, percent, downloaded, total }) => {
       setInstallProgress(percent)
+      if (downloaded !== undefined && total !== undefined) {
+        setInstallBytes({ dl: downloaded, total })
+      }
+      if (phase) {
+        setInstallLogs((prev) => {
+          if (prev[prev.length - 1] === phase) return prev
+          return [...prev, phase]
+        })
+      }
     })
 
     try {
@@ -434,7 +448,7 @@ export default function SetupWizard({ onComplete }: Props) {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground/60 mt-1">
-                      Mặc định lưu tại thư mục dữ liệu ứng dụng.
+                      Mặc định lưu tại thư mục dữ liệu ứng dụng. Yêu cầu ít nhất 4GB dung lượng bộ nhớ.
                     </p>
                   </div>
 
@@ -450,7 +464,7 @@ export default function SetupWizard({ onComplete }: Props) {
               )}
 
               {installPhase === "installing" && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
                     <h2 className="text-base font-semibold text-foreground mb-1">
                       Đang cài đặt...
@@ -459,16 +473,31 @@ export default function SetupWizard({ onComplete }: Props) {
                       Vui lòng không đóng ứng dụng trong khi cài đặt.
                     </p>
                   </div>
-                  <p className="text-sm text-foreground/80">{installPhaseLabel}</p>
-                  <div className="w-full bg-muted rounded-full h-2.5">
-                    <div
-                      className="bg-primary h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${installProgress}%` }}
-                    />
+                  <div className="bg-zinc-950 rounded-lg border border-zinc-800 p-3 h-40 overflow-y-auto font-mono text-xs text-zinc-300 leading-relaxed">
+                    {installLogs.map((line, i) => (
+                      <div key={i} className="whitespace-pre-wrap break-all">
+                        <span className="text-zinc-500 select-none mr-2">$</span>
+                        {line}
+                      </div>
+                    ))}
+                    <div ref={logsEndRef} />
                   </div>
-                  <p className="text-xs text-muted-foreground text-right">
-                    {installProgress}%
-                  </p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${installProgress}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground text-right shrink-0">
+                        {installProgress}%
+                        {installBytes && (
+                          <> ({(installBytes.dl / 1073741824).toFixed(1)}/{(installBytes.total / 1073741824).toFixed(1)} GB)</>
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
 

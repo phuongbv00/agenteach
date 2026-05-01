@@ -81,7 +81,7 @@ function installViaWinget(onOutput: (line: string) => void): Promise<void> {
 function downloadFile(
   url: string,
   destPath: string,
-  onProgress: (percent: number) => void,
+  onProgress: (percent: number, downloaded: number, total: number) => void,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const tmpPath = destPath + ".tmp"
@@ -108,7 +108,7 @@ function downloadFile(
           const out = fs.createWriteStream(tmpPath)
           res.on("data", (chunk: Buffer) => {
             downloaded += chunk.length
-            if (total > 0) onProgress(Math.round((downloaded / total) * 100))
+            if (total > 0) onProgress(Math.round((downloaded / total) * 100), downloaded, total)
           })
           res.pipe(out)
           out.on("finish", () => { fs.renameSync(tmpPath, destPath); resolve() })
@@ -128,8 +128,8 @@ export async function installLlamaCpp(
   win: BrowserWindow,
   modelPath: string,
 ): Promise<void> {
-  function send(phase: string, percent: number): void {
-    win.webContents.send("llamacpp:progress", { phase, percent })
+  function send(phase: string | null, percent: number, downloaded?: number, total?: number): void {
+    win.webContents.send("llamacpp:progress", { phase, percent, downloaded, total })
   }
 
   // 1. Install llama-server via package manager (if not already in PATH)
@@ -145,7 +145,7 @@ export async function installLlamaCpp(
       let tick = 0
       const pulse = setInterval(() => {
         tick = Math.min(tick + 2, 90)
-        send("Đang cài đặt llama.cpp qua Homebrew...", tick)
+        send(null, tick)
       }, 2000)
       try {
         await installViaBrew(brew, (line) => {
@@ -159,7 +159,7 @@ export async function installLlamaCpp(
       let tick = 0
       const pulse = setInterval(() => {
         tick = Math.min(tick + 2, 90)
-        send("Đang cài đặt llama.cpp qua winget...", tick)
+        send(null, tick)
       }, 2000)
       try {
         await installViaWinget((line) => {
@@ -172,8 +172,6 @@ export async function installLlamaCpp(
       throw new Error("Nền tảng không được hỗ trợ.")
     }
 
-    send("Đang cài đặt llama.cpp qua Homebrew...", 100)
-
     if (!resolveServerBin()) {
       throw new Error("Cài đặt xong nhưng không tìm thấy llama-server trong PATH.")
     }
@@ -183,8 +181,8 @@ export async function installLlamaCpp(
   fs.mkdirSync(path.dirname(modelPath), { recursive: true })
   if (!fs.existsSync(modelPath)) {
     send("Đang tải mô hình AI...", 0)
-    await downloadFile(MODEL_URL, modelPath, (pct) =>
-      send("Đang tải mô hình AI...", pct),
+    await downloadFile(MODEL_URL, modelPath, (pct, dl, total) =>
+      send("Đang tải mô hình AI...", pct, dl, total),
     )
   }
 

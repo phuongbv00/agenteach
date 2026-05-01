@@ -188,7 +188,7 @@ contextBridge.exposeInMainWorld("api", {
   llamacppGetStatus: (modelPath?: string) =>
     ipcRenderer.invoke("llamacpp:getStatus", modelPath),
   onLlamacppProgress: (
-    cb: (e: { phase: string; percent: number }) => void,
+    cb: (e: { phase: string | null; percent: number; downloaded?: number; total?: number }) => void,
   ) => {
     ipcRenderer.on("llamacpp:progress", (_e, data) => cb(data));
   },

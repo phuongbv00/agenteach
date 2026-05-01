@@ -11,8 +11,6 @@ let llamaProcess: ReturnType<typeof spawn> | null = null
 async function isServerRunning(): Promise<boolean> {
   try {
     const res = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(2000) })
-    const json = await res.json()
-    console.log("Llama.cpp server health check response:", JSON.stringify(json))
     return res.ok
   } catch {
     return false

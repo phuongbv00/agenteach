@@ -380,7 +380,7 @@ export default function SettingsPanel({ onClose }: Props) {
     setLlamaInstallProgress(0);
     setLlamaInstallLabel("Đang chuẩn bị...");
     window.api.onLlamacppProgress(({ phase, percent }) => {
-      setLlamaInstallLabel(phase);
+      if (phase) setLlamaInstallLabel(phase);
       setLlamaInstallProgress(percent);
     });
     try {

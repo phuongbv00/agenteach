@@ -197,7 +197,7 @@ declare global {
       // LlamaCpp
       llamacppInstall(modelPath: string): Promise<void>;
       llamacppGetStatus(modelPath?: string): Promise<{ llamacppReady: boolean; modelReady: boolean }>;
-      onLlamacppProgress(cb: (e: { phase: string; percent: number }) => void): void;
+      onLlamacppProgress(cb: (e: { phase: string | null; percent: number; downloaded?: number; total?: number }) => void): void;
       offLlamacppProgress(): void;
 
       // Data root
