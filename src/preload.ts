@@ -181,4 +181,26 @@ contextBridge.exposeInMainWorld("api", {
 
   // Logs
   exportLogs: () => ipcRenderer.invoke("system:exportLogs"),
+
+  // LlamaCpp
+  llamacppInstall: (modelPath: string) =>
+    ipcRenderer.invoke("llamacpp:install", modelPath),
+  llamacppGetStatus: (modelPath?: string) =>
+    ipcRenderer.invoke("llamacpp:getStatus", modelPath),
+  onLlamacppProgress: (
+    cb: (e: { phase: string; percent: number }) => void,
+  ) => {
+    ipcRenderer.on("llamacpp:progress", (_e, data) => cb(data));
+  },
+  offLlamacppProgress: () => {
+    ipcRenderer.removeAllListeners("llamacpp:progress");
+  },
+
+  // Data root
+  getDataRoot: () => ipcRenderer.invoke("system:getDataRoot"),
+  setDataRoot: (dirPath: string) =>
+    ipcRenderer.invoke("system:setDataRoot", dirPath),
+
+  // Generic folder picker
+  pickFolder: () => ipcRenderer.invoke("dialog:pickFolder"),
 });

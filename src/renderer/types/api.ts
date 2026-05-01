@@ -47,6 +47,7 @@ export interface AIProvider {
   name: string;
   baseUrl: string;
   apiKey: string;
+  selectedModel?: string;
 }
 
 export interface AppConfigData {
@@ -55,6 +56,7 @@ export interface AppConfigData {
   providers: AIProvider[];
   activeProviderId: string | null;
   selectedModel: string;
+  localModelPath: string;
   activeWorkspaceId: string | null;
   setupComplete: boolean;
 }
@@ -191,6 +193,19 @@ declare global {
       deleteMcp(id: string): Promise<void>;
       openMcpDir(): Promise<void>;
       exportLogs(): Promise<boolean>;
+
+      // LlamaCpp
+      llamacppInstall(modelPath: string): Promise<void>;
+      llamacppGetStatus(modelPath?: string): Promise<{ llamacppReady: boolean; modelReady: boolean }>;
+      onLlamacppProgress(cb: (e: { phase: string; percent: number }) => void): void;
+      offLlamacppProgress(): void;
+
+      // Data root
+      getDataRoot(): Promise<string>;
+      setDataRoot(dirPath: string): Promise<void>;
+
+      // Generic folder picker
+      pickFolder(): Promise<string | null>;
     };
   }
 }

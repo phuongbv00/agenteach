@@ -18,6 +18,7 @@ import { PermissionManager } from "../PermissionManager";
 import { ArtifactStore } from "../../sessions/ArtifactStore";
 import type { Workspace } from "../../workspace/WorkspaceManager";
 import type { WorkspaceIndex } from "../WorkspaceIndex";
+import { dataDir } from "../../utils/dataDir";
 
 export async function requestHitl(
   action: "read" | "write",
@@ -495,12 +496,7 @@ export function createFileTools(
   }
 
   function artifactsDir(): string {
-    return path.join(
-      wsPath,
-      ".agenteach",
-      "artifacts",
-      sessionId ?? "default",
-    );
+    return dataDir("workspaces", workspace.id, "artifacts", sessionId ?? "default");
   }
 
   function resolveArtifactPath(fileName: string): string {

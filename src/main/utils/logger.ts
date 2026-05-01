@@ -1,10 +1,9 @@
 import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 import log from 'electron-log/main';
+import { dataDir } from './dataDir';
 
-// Logs are stored in ~/.agenteach/logs/
-const logDir = path.join(os.homedir(), '.agenteach', 'logs');
+const logDir = dataDir('logs');
 fs.mkdirSync(logDir, { recursive: true });
 log.transports.file.resolvePathFn = () => path.join(logDir, 'main.log');
 log.transports.file.level = 'debug';

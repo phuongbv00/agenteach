@@ -1,8 +1,6 @@
 import fs from "fs";
-import os from "os";
 import path from "path";
-
-const CACHE_ROOT = path.join(os.homedir(), ".agenteach", "cache");
+import { dataDir } from "../utils/dataDir";
 
 interface CacheMeta {
   mtime: number;
@@ -13,7 +11,7 @@ function cacheContentPath(filePath: string): string {
   // without the colon, then strip the leading slash on Unix paths.
   const normalized = filePath.replace(/\\/g, "/");
   const stripped = normalized.replace(/^([A-Za-z]):\//, "$1/").replace(/^\//, "");
-  const base = path.join(CACHE_ROOT, "fs_read_file", stripped);
+  const base = path.join(dataDir("cache"), "fs_read_file", stripped);
   // Parsed binary formats are stored as Markdown: file.pdf → file.pdf.md
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".pdf" || ext === ".docx") return base + ".md";

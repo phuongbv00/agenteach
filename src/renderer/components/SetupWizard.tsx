@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState, useEffect, Fragment } from "react"
 import {
   ArrowLeft,
   ArrowRight,
@@ -6,161 +6,206 @@ import {
   CheckCircle2,
   Folder,
   X,
-} from "lucide-react";
-import type { AIProvider } from "../types/api";
-import iconUrl from "../assets/icon.jpeg";
-import { Button } from "@/renderer/components/ui/button";
-import { Input } from "@/renderer/components/ui/input";
-import { Label } from "@/renderer/components/ui/label";
-import { Badge } from "./ui/badge";
+} from "lucide-react"
+import type { AIProvider } from "../types/api"
+import iconUrl from "../assets/icon.jpeg"
+import { Button } from "@/renderer/components/ui/button"
+import { Input } from "@/renderer/components/ui/input"
+import { Label } from "@/renderer/components/ui/label"
+import { Badge } from "./ui/badge"
 
 interface Props {
-  onComplete: () => void;
+  onComplete: () => void
 }
 
-const STEPS = ["ai-provider", "profile", "workspace"] as const;
-type Step = (typeof STEPS)[number];
+const STEPS = ["data-dir", "connection", "ai-setup", "profile", "workspace"] as const
+type Step = (typeof STEPS)[number]
 
 const STEP_LABELS: Record<Step, string> = {
-  "ai-provider": "Kết nối AI",
+  "data-dir": "Dữ liệu",
+  connection: "Kết nối",
+  "ai-setup": "Cài đặt",
   profile: "Hồ sơ",
   workspace: "Workspace",
-};
+}
 
-type ProviderPreset = {
-  id: string;
-  label: string;
-  description: string;
-  badge: string;
-  badgeVariant: "warning" | "success";
-  baseUrl: string;
-  needsKey: boolean;
-};
-
-const PRESETS: ProviderPreset[] = [
-  {
-    id: "ollama-local",
-    label: "Máy tính cá nhân",
-    description:
-      "AI chạy trực tiếp trên máy tính này. Không cần internet, dữ liệu không rời khỏi máy tính của bạn.",
-    badge: "Yêu cầu máy cá nhân cấu hình mạnh",
-    badgeVariant: "warning",
-    baseUrl: "http://localhost:11434/v1",
-    needsKey: false,
-  },
-  {
-    id: "openai-compatible-remote",
-    label: "Máy chủ trung tâm",
-    description:
-      "Kết nối với AI do nhà trường hoặc đơn vị cung cấp quản lý. Liên hệ bộ phận IT để lấy địa chỉ máy chủ và mã kết nối (API Key).",
-    badge: "Dành cho máy cá nhân cấu hình yếu",
-    badgeVariant: "success",
-    baseUrl: "",
-    needsKey: true,
-  },
-];
+type ConnectionChoice = "local" | "remote"
+type InstallPhase = "idle" | "installing" | "done" | "error"
 
 export default function SetupWizard({ onComplete }: Props) {
-  const [step, setStep] = useState<Step>("ai-provider");
+  const [step, setStep] = useState<Step>("data-dir")
 
-  // ── Step 1: Provider ────────────────────────────────────────
-  const [selectedPresetId, setSelectedPresetId] = useState(PRESETS[0].id);
-  const [customUrl, setCustomUrl] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
+  // ── Step 1: Data dir ─────────────────────────────────────────
+  const [dataRoot, setDataRoot] = useState("")
 
-  // ── Step 2: Model ───────────────────────────────────────────
-  const [models, setModels] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState("");
+  // ── Step 2: Connection ───────────────────────────────────────
+  const [connectionChoice, setConnectionChoice] = useState<ConnectionChoice>("local")
 
-  // ── Step 3: Profile ─────────────────────────────────────────
-  const [teacherName, setTeacherName] = useState("");
-  const [subject, setSubject] = useState("");
+  // ── Step 3: AI setup (local) ─────────────────────────────────
+  const [modelDir, setModelDir] = useState("")
+  const [installPhase, setInstallPhase] = useState<InstallPhase>("idle")
+  const [installProgress, setInstallProgress] = useState(0)
+  const [installPhaseLabel, setInstallPhaseLabel] = useState("")
 
-  // ── Step 4: Workspace ────────────────────────────────────────
-  const [wsName, setWsName] = useState("");
-  const [wsPath, setWsPath] = useState("");
-  const [wsCreating, setWsCreating] = useState(false);
+  // ── Step 3: AI setup (remote) ────────────────────────────────
+  const [customUrl, setCustomUrl] = useState("")
+  const [apiKey, setApiKey] = useState("")
+  const [checking, setChecking] = useState(false)
+  const [connectionOk, setConnectionOk] = useState<boolean | null>(null)
+  const [models, setModels] = useState<string[]>([])
+  const [selectedModel, setSelectedModel] = useState("")
 
-  // ── Helpers ─────────────────────────────────────────────────
-  const activePreset =
-    PRESETS.find((p) => p.id === selectedPresetId) ?? PRESETS[0];
-  const effectiveUrl =
-    selectedPresetId === PRESETS[0].id
-      ? activePreset.baseUrl
-      : customUrl.trim() || activePreset.baseUrl;
+  // ── Step 4: Profile ──────────────────────────────────────────
+  const [teacherName, setTeacherName] = useState("")
+  const [subject, setSubject] = useState("")
 
-  function buildProvider(): AIProvider {
-    return {
-      id: activePreset.id,
-      name: activePreset.label.split("—")[0].trim(),
-      baseUrl: effectiveUrl,
-      apiKey: apiKey.trim(),
-    };
+  // ── Step 5: Workspace ────────────────────────────────────────
+  const [wsName, setWsName] = useState("")
+  const [wsPath, setWsPath] = useState("")
+  const [wsCreating, setWsCreating] = useState(false)
+
+  useEffect(() => {
+    window.api.getDataRoot().then((root) => {
+      setDataRoot(root)
+      setModelDir(root + "/models")
+    })
+  }, [])
+
+  const MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
+
+  function effectiveModelPath(): string {
+    const dir = modelDir.trim() || dataRoot + "/models"
+    return dir.replace(/\/+$/, "") + "/" + MODEL_FILENAME
   }
 
+  // ── Navigation ───────────────────────────────────────────────
+  const currentIdx = STEPS.indexOf(step)
+
   const goBack = () => {
-    const idx = STEPS.indexOf(step);
-    if (idx > 0) setStep(STEPS[idx - 1]);
-  };
+    if (step === "ai-setup" && installPhase === "installing") return
+    if (currentIdx > 0) setStep(STEPS[currentIdx - 1])
+  }
 
-  const handleConnect = async () => {
-    setChecking(true);
-    setConnectionOk(null);
-    const provider = buildProvider();
-    const ok = await window.api.checkProvider(provider);
-    setConnectionOk(ok);
-    setChecking(false);
-    if (ok) {
-      await window.api.saveProvider(provider);
-      await window.api.setActiveProvider(provider.id);
-      const list = await window.api.listProviderModels(provider);
-      setModels(list);
-      if (list.length > 0) setSelectedModel(list[0]);
+  // ── Step 1 handlers ──────────────────────────────────────────
+  const handlePickDataRoot = async () => {
+    const picked = await window.api.pickFolder()
+    if (picked) {
+      setDataRoot(picked)
+      setModelDir(picked + "/models")
     }
-  };
+  }
 
-  const handleModelNext = async () => {
-    if (!selectedModel) return;
-    await window.api.selectModel(selectedModel);
-    setStep("profile");
-  };
+  const handleDataDirNext = async () => {
+    await window.api.setDataRoot(dataRoot)
+    // Refresh default model dir in case dataRoot changed
+    setModelDir(dataRoot + "/models")
+    setStep("connection")
+  }
 
+  // ── Step 3 handlers (local) ──────────────────────────────────
+  const handlePickModelDir = async () => {
+    const picked = await window.api.pickFolder()
+    if (picked) setModelDir(picked)
+  }
+
+  const handleStartInstall = async () => {
+    const modelPath = effectiveModelPath()
+    setInstallPhase("installing")
+    setInstallProgress(0)
+    setInstallPhaseLabel("Đang chuẩn bị...")
+
+    window.api.onLlamacppProgress(({ phase, percent }) => {
+      setInstallPhaseLabel(phase)
+      setInstallProgress(percent)
+    })
+
+    try {
+      await window.api.llamacppInstall(modelPath)
+
+      const provider: AIProvider = {
+        id: "llamacpp-local",
+        name: "AI local",
+        baseUrl: "http://localhost:8080/v1",
+        apiKey: "",
+      }
+      await window.api.saveProvider(provider)
+      await window.api.setActiveProvider("llamacpp-local")
+      await window.api.updateConfig({ localModelPath: modelPath })
+
+      // Start server so we can list the model
+      await window.api.checkProvider(provider)
+      const list = await window.api.listProviderModels(provider)
+      const modelId = list[0] ?? "gemma-4-E2B-it-Q4_K_M"
+      await window.api.selectModel(modelId)
+
+      setInstallPhase("done")
+    } catch {
+      setInstallPhase("error")
+    } finally {
+      window.api.offLlamacppProgress()
+    }
+  }
+
+  // ── Step 3 handlers (remote) ─────────────────────────────────
+  const handleRemoteConnect = async () => {
+    setChecking(true)
+    setConnectionOk(null)
+    const provider: AIProvider = {
+      id: "openai-compatible-remote",
+      name: "Máy chủ trung tâm",
+      baseUrl: customUrl.trim(),
+      apiKey: apiKey.trim(),
+    }
+    const ok = await window.api.checkProvider(provider)
+    setConnectionOk(ok)
+    setChecking(false)
+    if (ok) {
+      await window.api.saveProvider(provider)
+      await window.api.setActiveProvider(provider.id)
+      const list = await window.api.listProviderModels(provider)
+      setModels(list)
+      if (list.length > 0) setSelectedModel(list[0])
+    }
+  }
+
+  const handleRemoteModelNext = async () => {
+    if (!selectedModel) return
+    await window.api.selectModel(selectedModel)
+    setStep("profile")
+  }
+
+  // ── Step 4 handlers ──────────────────────────────────────────
   const handleFinish = async () => {
     await window.api.updateConfig({
       teacherName: teacherName.trim(),
       subject: subject.trim(),
       setupComplete: false,
-    });
+    })
     await window.api.updateMemory(
       `## PROFILE\n- Tên: ${teacherName.trim()}\n- Môn dạy: ${subject.trim()}\n\n## PREFERENCES\n\n## BRIEF HISTORY\n`,
-    );
-    setStep("workspace");
-  };
+    )
+    setStep("workspace")
+  }
 
+  // ── Step 5 handlers ──────────────────────────────────────────
   const handlePickFolder = async () => {
-    const ws = await window.api.createWorkspace(
-      wsName.trim() || "My Workspace",
-    );
+    const ws = await window.api.createWorkspace(wsName.trim() || "My Workspace")
     if (ws) {
-      setWsPath(ws.path);
-      if (!wsName.trim()) setWsName(ws.name);
+      setWsPath(ws.path)
+      if (!wsName.trim()) setWsName(ws.name)
     }
-  };
+  }
 
   const handleCreateWorkspace = async () => {
-    setWsCreating(true);
-    await window.api.updateConfig({ setupComplete: true });
-    onComplete();
-  };
+    setWsCreating(true)
+    await window.api.updateConfig({ setupComplete: true })
+    onComplete()
+  }
 
   const handleSkipWorkspace = async () => {
-    await window.api.updateConfig({ setupComplete: true });
-    onComplete();
-  };
-
-  const currentIdx = STEPS.indexOf(step);
+    await window.api.updateConfig({ setupComplete: true })
+    onComplete()
+  }
 
   return (
     <div className="flex items-center justify-center h-full bg-muted/30">
@@ -170,7 +215,7 @@ export default function SetupWizard({ onComplete }: Props) {
           <img
             src={iconUrl}
             alt="Agenteach"
-            className="w-24 h-24 mx-auto mb-2 rounded-xl"
+            className="w-24 h-24 mx-auto mb-2"
           />
           <h1 className="text-2xl font-bold text-foreground">Agenteach</h1>
         </div>
@@ -207,130 +252,337 @@ export default function SetupWizard({ onComplete }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0 pr-2 -mr-2">
-          {/* ── Step 1: Kết nối AI ── */}
-          {step === "ai-provider" && (
+          {/* ── Step 1: Dữ liệu ── */}
+          {step === "data-dir" && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">
+                  Thư mục lưu trữ dữ liệu
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Tất cả dữ liệu ứng dụng (cấu hình, lịch sử chat, mô hình AI)
+                  sẽ được lưu tại thư mục này.
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                  Thư mục dữ liệu
+                </Label>
+                {dataRoot ? (
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20">
+                    <Folder size={14} className="text-primary shrink-0" />
+                    <span className="text-sm text-primary font-mono truncate flex-1">
+                      {dataRoot}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-10 bg-muted animate-pulse" />
+                )}
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handlePickDataRoot}
+              >
+                <Folder size={14} className="mr-2" /> Chọn thư mục khác
+              </Button>
+
+              <Button
+                className="w-full"
+                onClick={handleDataDirNext}
+                disabled={!dataRoot}
+              >
+                Tiếp tục <ArrowRight size={14} className="ml-1" />
+              </Button>
+            </div>
+          )}
+
+          {/* ── Step 2: Kết nối ── */}
+          {step === "connection" && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-base font-semibold text-foreground mb-1">
                   Kết nối AI
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Chọn cách kết nối phù hợp với bạn. Nếu không chắc, hãy liên hệ
-                  bộ phận IT của trường để được hướng dẫn.
+                  Chọn cách kết nối phù hợp với bạn. Nếu không chắc, hãy liên
+                  hệ bộ phận IT của trường để được hướng dẫn.
                 </p>
               </div>
 
               <div className="space-y-2">
-                {PRESETS.map((p) => (
+                {(
+                  [
+                    {
+                      id: "local",
+                      label: "Máy tính cá nhân",
+                      description:
+                        "AI chạy trực tiếp trên máy tính này. Không cần internet, dữ liệu không rời khỏi máy tính của bạn.",
+                      badge: "Yêu cầu máy cá nhân cấu hình mạnh",
+                      badgeVariant: "warning",
+                    },
+                    {
+                      id: "remote",
+                      label: "Máy chủ trung tâm",
+                      description:
+                        "Kết nối với AI do nhà trường hoặc đơn vị cung cấp quản lý. Liên hệ bộ phận IT để lấy địa chỉ máy chủ và mã kết nối.",
+                      badge: "Dành cho máy cá nhân cấu hình yếu",
+                      badgeVariant: "success",
+                    },
+                  ] as {
+                    id: ConnectionChoice
+                    label: string
+                    description: string
+                    badge: string
+                    badgeVariant: "warning" | "success"
+                  }[]
+                ).map((opt) => (
                   <button
-                    key={p.id}
-                    onClick={() => {
-                      setSelectedPresetId(p.id);
-                      setConnectionOk(null);
-                      setCustomUrl("");
-                      setApiKey("");
-                    }}
-                    className={`w-full flex items-center gap-3 p-3 border rounded-xl text-left transition-colors ${
-                      selectedPresetId === p.id
+                    key={opt.id}
+                    onClick={() => setConnectionChoice(opt.id)}
+                    className={`w-full flex items-center gap-3 p-3 border text-left transition-colors ${
+                      connectionChoice === opt.id
                         ? "border-primary bg-primary/5"
                         : "hover:bg-muted/30 border-border"
                     }`}
                   >
                     <div
                       className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                        selectedPresetId === p.id
+                        connectionChoice === opt.id
                           ? "border-primary"
                           : "border-border"
                       }`}
                     >
-                      {selectedPresetId === p.id && (
+                      {connectionChoice === opt.id && (
                         <div className="w-2 h-2 rounded-full bg-primary" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-foreground">
-                          {p.label}
+                          {opt.label}
                         </p>
                         <Badge
-                          className={`${
-                            p.badgeVariant === "success"
+                          className={
+                            opt.badgeVariant === "success"
                               ? "bg-green-100 text-green-700"
                               : "bg-amber-100 text-amber-700"
-                          }`}
+                          }
                         >
-                          {p.badge}
+                          {opt.badge}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground/70 mt-0.5 leading-relaxed">
-                        {p.description}
+                        {opt.description}
                       </p>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {selectedPresetId !== "ollama-local" && (
-                <div className="space-y-2">
-                  <Input
-                    autoFocus
-                    value={customUrl}
-                    onChange={(e) => {
-                      setCustomUrl(e.target.value);
-                      setConnectionOk(null);
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleConnect()}
-                    placeholder={`Địa chỉ (${activePreset.baseUrl || "https://api.example.com/v1"})`}
-                    className="font-mono"
-                  />
-                  <Input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="API Key"
-                    required={activePreset.needsKey}
-                    className="font-mono"
-                  />
+              <div className="flex gap-2">
+                <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                  <ArrowLeft size={14} /> Quay lại
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => setStep("ai-setup")}
+                >
+                  Tiếp tục <ArrowRight size={14} className="ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Cài đặt AI (local) ── */}
+          {step === "ai-setup" && connectionChoice === "local" && (
+            <div className="space-y-5">
+              {installPhase === "idle" && (
+                <>
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground mb-1">
+                      Cài đặt AI local
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Ứng dụng sẽ tải xuống và cài đặt:
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc list-inside">
+                      <li>llama.cpp — chương trình giúp máy tính chạy mô hình AI</li>
+                      <li>Gemma 4 E2B — mô hình AI (~3GB)</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium text-foreground mb-1.5 block">
+                      Thư mục lưu mô hình AI
+                    </Label>
+                    <div className="flex gap-2">
+                      <div className="flex items-center gap-2 flex-1 py-2 px-2.5 bg-muted/40 border border-border min-w-0">
+                        <Folder size={13} className="text-muted-foreground shrink-0" />
+                        <span className="text-xs font-mono text-muted-foreground truncate">
+                          {effectiveModelPath()}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={handlePickModelDir}
+                      >
+                        Thay đổi
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground/60 mt-1">
+                      Mặc định lưu tại thư mục dữ liệu ứng dụng.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                      <ArrowLeft size={14} /> Quay lại
+                    </Button>
+                    <Button className="flex-1" onClick={handleStartInstall}>
+                      Bắt đầu cài đặt <ArrowRight size={14} className="ml-1" />
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {installPhase === "installing" && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground mb-1">
+                      Đang cài đặt...
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Vui lòng không đóng ứng dụng trong khi cài đặt.
+                    </p>
+                  </div>
+                  <p className="text-sm text-foreground/80">{installPhaseLabel}</p>
+                  <div className="w-full bg-muted rounded-full h-2.5">
+                    <div
+                      className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${installProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-right">
+                    {installProgress}%
+                  </p>
                 </div>
               )}
 
+              {installPhase === "done" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <CheckCircle2 size={20} />
+                    <h2 className="text-base font-semibold">Cài đặt hoàn tất!</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Mô hình AI đã sẵn sàng. Tiếp tục để thiết lập hồ sơ của bạn.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => setStep("profile")}
+                  >
+                    Tiếp tục <ArrowRight size={14} className="ml-1" />
+                  </Button>
+                </div>
+              )}
+
+              {installPhase === "error" && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground mb-1">
+                      Cài đặt thất bại
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Kiểm tra kết nối internet và thử lại.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                      <ArrowLeft size={14} /> Quay lại
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      onClick={() => {
+                        setInstallPhase("idle")
+                        setInstallProgress(0)
+                      }}
+                    >
+                      Thử lại
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Step 3: Kết nối AI (remote) ── */}
+          {step === "ai-setup" && connectionChoice === "remote" && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground mb-1">
+                  Kết nối máy chủ AI
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Nhập địa chỉ và mã kết nối do bộ phận IT cung cấp.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Input
+                  autoFocus
+                  value={customUrl}
+                  onChange={(e) => {
+                    setCustomUrl(e.target.value)
+                    setConnectionOk(null)
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleRemoteConnect()}
+                  placeholder="https://api.example.com/v1"
+                  className="font-mono"
+                />
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API Key"
+                  className="font-mono"
+                />
+              </div>
+
               {connectionOk === false && (
-                <div className="bg-orange-50 border border-orange-200 text-orange-800 rounded-xl p-4 text-sm space-y-1">
+                <div className="bg-orange-50 border border-orange-200 text-orange-800 p-4 text-sm space-y-1">
                   <p className="font-medium">Không kết nối được. Kiểm tra:</p>
                   <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                    {selectedPresetId === "ollama-local" && (
-                      <li>Ollama đã bật chưa?</li>
-                    )}
-                    {selectedPresetId !== PRESETS[0].id && (
-                      <li>Địa chỉ URL có đúng không?</li>
-                    )}
-                    {activePreset.needsKey && <li>API key có hợp lệ không?</li>}
-                    <li>Liên hệ bộ phận IT để được hỗ trợ chi tiết</li>
+                    <li>Địa chỉ URL có đúng không?</li>
+                    <li>API key có hợp lệ không?</li>
+                    <li>Liên hệ bộ phận IT để được hỗ trợ</li>
                   </ul>
                 </div>
               )}
 
               {connectionOk !== true && (
-                <Button
-                  className="w-full rounded-xl"
-                  onClick={handleConnect}
-                  disabled={
-                    checking ||
-                    (selectedPresetId !== PRESETS[0].id && !customUrl.trim())
-                  }
-                >
-                  {checking ? "Đang kiểm tra..." : "Kết nối"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="rounded-xl" onClick={goBack}>
+                    <ArrowLeft size={14} /> Quay lại
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={handleRemoteConnect}
+                    disabled={checking || !customUrl.trim()}
+                  >
+                    {checking ? "Đang kiểm tra..." : "Kết nối"}
+                  </Button>
+                </div>
               )}
 
               {connectionOk === true && (
                 <div className="space-y-4">
-                  <div className="bg-primary/5 border border-primary/20 text-primary p-3 text-sm flex items-center">
+                  <div className="bg-primary/5 border border-primary/20 text-primary p-3 text-sm flex items-center gap-2">
                     <CheckCircle2 size={16} />
-                    <span className="ml-3">
-                      Kết nối thành công! Vui lòng chọn mô hình AI bên dưới đề
-                      tiếp tục.
-                    </span>
+                    <span>Kết nối thành công! Vui lòng chọn mô hình AI.</span>
                   </div>
 
                   <div>
@@ -339,29 +591,17 @@ export default function SetupWizard({ onComplete }: Props) {
                     </h3>
                     <div className="space-y-2">
                       {models.length === 0 ? (
-                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 space-y-2">
-                          <p className="font-medium">
-                            Chưa có model nào được cài đặt.
+                        <div className="bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800">
+                          <p className="font-medium">Chưa có model nào trên máy chủ.</p>
+                          <p className="text-xs text-orange-700 mt-1">
+                            Liên hệ bộ phận IT để được hỗ trợ.
                           </p>
-                          <ul className="text-xs space-y-1 text-orange-700 list-disc list-inside">
-                            {selectedPresetId === "ollama-local" ? (
-                              <li>
-                                Tải model qua terminal:{" "}
-                                <code className="bg-orange-100 px-1 rounded font-mono">
-                                  ollama pull &lt;model&gt;
-                                </code>
-                              </li>
-                            ) : (
-                              <li>Kiểm tra lại địa chỉ URL và API Key</li>
-                            )}
-                            <li>Liên hệ bộ phận IT nếu cần hỗ trợ</li>
-                          </ul>
                         </div>
                       ) : (
                         models.map((m) => (
                           <label
                             key={m}
-                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
+                            className={`flex items-center gap-3 p-3 border cursor-pointer transition-colors ${
                               selectedModel === m
                                 ? "border-primary bg-primary/5"
                                 : "hover:bg-muted/30"
@@ -385,8 +625,8 @@ export default function SetupWizard({ onComplete }: Props) {
                   </div>
 
                   <Button
-                    className="w-full rounded-xl"
-                    onClick={handleModelNext}
+                    className="w-full"
+                    onClick={handleRemoteModelNext}
                     disabled={!selectedModel}
                   >
                     Tiếp tục <ArrowRight size={14} className="ml-1" />
@@ -396,7 +636,7 @@ export default function SetupWizard({ onComplete }: Props) {
             </div>
           )}
 
-          {/* ── Step 2: Hồ sơ ── */}
+          {/* ── Step 4: Hồ sơ ── */}
           {step === "profile" && (
             <div className="space-y-5">
               <div>
@@ -437,15 +677,11 @@ export default function SetupWizard({ onComplete }: Props) {
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={goBack}
-                >
+                <Button variant="outline" className="rounded-xl" onClick={goBack}>
                   <ArrowLeft size={14} /> Quay lại
                 </Button>
                 <Button
-                  className="flex-1 rounded-xl"
+                  className="flex-1"
                   onClick={handleFinish}
                   disabled={!teacherName.trim()}
                 >
@@ -455,7 +691,7 @@ export default function SetupWizard({ onComplete }: Props) {
             </div>
           )}
 
-          {/* ── Step 3: Workspace ── */}
+          {/* ── Step 5: Workspace ── */}
           {step === "workspace" && (
             <div className="space-y-5">
               <div>
@@ -482,7 +718,7 @@ export default function SetupWizard({ onComplete }: Props) {
                 </div>
 
                 {wsPath ? (
-                  <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20">
                     <Folder size={14} className="text-primary shrink-0" />
                     <span className="text-sm text-primary font-mono truncate flex-1">
                       {wsPath}
@@ -499,7 +735,7 @@ export default function SetupWizard({ onComplete }: Props) {
                 ) : (
                   <button
                     onClick={handlePickFolder}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 rounded-xl text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
                     <Folder size={14} /> Chọn thư mục...
                   </button>
@@ -507,15 +743,11 @@ export default function SetupWizard({ onComplete }: Props) {
               </div>
 
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={goBack}
-                >
+                <Button variant="outline" className="rounded-xl" onClick={goBack}>
                   <ArrowLeft size={14} /> Quay lại
                 </Button>
                 <Button
-                  className="flex-1 rounded-xl bg-primary hover:bg-primary/80"
+                  className="flex-1 bg-primary hover:bg-primary/80"
                   onClick={wsPath ? handleCreateWorkspace : handlePickFolder}
                   disabled={wsCreating}
                 >
@@ -542,5 +774,5 @@ export default function SetupWizard({ onComplete }: Props) {
         </div>
       </div>
     </div>
-  );
+  )
 }

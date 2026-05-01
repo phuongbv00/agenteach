@@ -4,7 +4,9 @@ import { logFilePath } from "../utils/logger";
 import mammoth from "mammoth";
 import { appConfig } from "../config/AppConfig";
 import { checkProviderHealth, listModels } from "../llm/LLMClient";
-import { tryStartOllama } from "../llm/OllamaLauncher";
+import { tryStartLlamaCpp } from "../llm/LlamaCppLauncher";
+import { installLlamaCpp, getInstallStatus } from "../llm/LlamaCppInstaller";
+import { getDataRoot, setDataRoot } from "../utils/dataDir";
 import type { AIProvider } from "../config/AppConfig";
 import { WorkspaceManager } from "../workspace/WorkspaceManager";
 import { MemoryStore } from "../memory/MemoryStore";
@@ -25,12 +27,16 @@ export function registerHandlers(win: BrowserWindow): void {
     },
   );
   ipcMain.handle("system:selectModel", (_e, model: string) => {
-    appConfig.update({ selectedModel: model });
+    const cfg = appConfig.get();
+    const providers = cfg.providers.map((p) =>
+      p.id === cfg.activeProviderId ? { ...p, selectedModel: model } : p,
+    );
+    appConfig.update({ selectedModel: model, providers });
   });
 
   // Provider management
   ipcMain.handle("provider:check", async (_e, provider: AIProvider) => {
-    if (provider.id === "ollama-local") await tryStartOllama();
+    if (provider.id === "llamacpp-local") await tryStartLlamaCpp();
     return checkProviderHealth(provider);
   });
   ipcMain.handle("provider:listModels", (_e, provider: AIProvider) =>
@@ -55,7 +61,33 @@ export function registerHandlers(win: BrowserWindow): void {
     appConfig.update({ providers, activeProviderId });
   });
   ipcMain.handle("provider:setActive", (_e, id: string) => {
-    appConfig.update({ activeProviderId: id });
+    const cfg = appConfig.get();
+    const provider = cfg.providers.find((p) => p.id === id);
+    const patch: Partial<typeof cfg> = { activeProviderId: id };
+    if (provider?.selectedModel) patch.selectedModel = provider.selectedModel;
+    appConfig.update(patch);
+  });
+
+  // LlamaCpp install
+  ipcMain.handle("llamacpp:install", (_e, modelPath: string) =>
+    installLlamaCpp(win, modelPath),
+  );
+  ipcMain.handle("llamacpp:getStatus", (_e, modelPath?: string) =>
+    getInstallStatus(modelPath),
+  );
+
+  // Data root
+  ipcMain.handle("system:getDataRoot", () => getDataRoot());
+  ipcMain.handle("system:setDataRoot", (_e, newRoot: string) =>
+    setDataRoot(newRoot),
+  );
+
+  // Generic folder picker (without creating a workspace)
+  ipcMain.handle("dialog:pickFolder", async () => {
+    const result = await dialog.showOpenDialog(win, {
+      properties: ["openDirectory"],
+    });
+    return result.canceled ? null : result.filePaths[0];
   });
 
   // Backward-compat shims

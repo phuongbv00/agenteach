@@ -50,7 +50,12 @@ export default function App() {
       setArtifacts(artifacts);
     }
 
-    const ollamaOk = await window.api.checkOllama();
+    const activeProvider =
+      config.providers.find((p) => p.id === config.activeProviderId) ??
+      config.providers[0];
+    const ollamaOk = activeProvider
+      ? await window.api.checkProvider(activeProvider)
+      : false;
     setOllamaOk(ollamaOk);
 
     setView(config.setupComplete ? 'main' : 'setup');

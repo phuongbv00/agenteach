@@ -6,7 +6,7 @@ import { updateElectronApp } from "update-electron-app";
 import { registerHandlers } from "./main/ipc/handlers";
 import { initDb } from "./main/db";
 import { seedSkills } from "./main/plugins/seedSkills";
-import { killOllamaProcess } from "./main/llm/OllamaLauncher";
+import { killLlamaCppProcess } from "./main/llm/LlamaCppLauncher";
 
 if (started) app.quit();
 
@@ -55,5 +55,5 @@ app.on("activate", () => {
 });
 
 app.on("before-quit", () => {
-  killOllamaProcess();
+  killLlamaCppProcess();
 });

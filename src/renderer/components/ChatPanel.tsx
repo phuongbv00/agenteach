@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp,
-  ChevronDown,
   FolderOpen,
   GraduationCap,
   Square,
@@ -21,12 +20,7 @@ import type { WorkspaceFile } from "@/renderer/types/api";
 import { Button } from "@/renderer/components/ui/button";
 import { Badge } from "@/renderer/components/ui/badge";
 import { Textarea } from "@/renderer/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/renderer/components/ui/dropdown-menu";
+import { ProviderModelPicker } from "./ProviderModelPicker";
 
 export default function ChatPanel() {
   const {
@@ -47,11 +41,10 @@ export default function ChatPanel() {
     savedMessageCount,
     markSaved,
   } = useChatStore();
-  const { activeWorkspace, activeSessionId, config, setConfig } = useAppStore();
+  const { activeWorkspace, activeSessionId, config } = useAppStore();
+  const selectedModel = config?.selectedModel ?? "";
   const [input, setInput] = useState("");
   const [mentionedFiles, setMentionedFiles] = useState<WorkspaceFile[]>([]);
-  const selectedModel = config?.selectedModel ?? "";
-  const [models, setModels] = useState<string[]>([]);
   const [, setFileProgress] = useState<{
     fileName: string;
     stage: "reading" | "parsing";
@@ -59,14 +52,6 @@ export default function ChatPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    window.api.listModels().then(setModels);
-  }, [config?.activeProviderId]);
-
-  const handleSelectModel = async (model: string) => {
-    await window.api.selectModel(model);
-    setConfig(await window.api.getConfig());
-  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -185,10 +170,6 @@ export default function ChatPanel() {
       </div>
     );
   }
-
-  const modelLabel = selectedModel
-    ? (selectedModel.split("/").pop() ?? selectedModel)
-    : "Model";
 
   return (
     <div className="flex-1 flex flex-col min-w-0 relative">
@@ -322,37 +303,7 @@ export default function ChatPanel() {
                 onConfirm={handleFilesSelected}
               />
               <div className="flex-1" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="text-muted-foreground gap-1 rounded-xl"
-                  >
-                    <span>{modelLabel}</span>
-                    <ChevronDown size={12} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="max-h-56 overflow-y-auto"
-                >
-                  {models.length === 0 && (
-                    <p className="text-xs text-muted-foreground px-3 py-2">
-                      Không có model khả dụng
-                    </p>
-                  )}
-                  {models.map((m) => (
-                    <DropdownMenuItem
-                      key={m}
-                      onClick={() => handleSelectModel(m)}
-                      className={`text-xs truncate ${m === selectedModel ? "text-primary font-medium" : ""}`}
-                    >
-                      {m}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <ProviderModelPicker />
               {isStreaming ? (
                 <Button
                   size="icon-sm"

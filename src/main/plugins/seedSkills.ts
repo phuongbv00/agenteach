@@ -4,7 +4,7 @@ import { app } from 'electron'
 import { PluginLoader } from './PluginLoader'
 
 /**
- * Seeds built-in skill files into ~/.agenteach/plugins/skills on first run.
+ * Seeds built-in skill files into &lt;dataDir&gt;/plugins/skills on first run.
  * Existing files are never overwritten, so user edits are preserved.
  */
 export function seedSkills(): void {
