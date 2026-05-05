@@ -85,12 +85,16 @@ export default function SettingsPanel({ onClose }: Props) {
   // ── Two-panel state ──────────────────────────────────────────
   const [viewedProviderId, setViewedProviderId] = useState<string | null>(null);
   const [isNewProvider, setIsNewProvider] = useState(false);
-  const [newProviderType, setNewProviderType] = useState<"remote" | "local">("remote");
+  const [newProviderType, setNewProviderType] = useState<"remote" | "local">(
+    "remote",
+  );
   const [formName, setFormName] = useState("");
   const [formBaseUrl, setFormBaseUrl] = useState("https://");
   const [formApiKey, setFormApiKey] = useState("");
   const [formDirty, setFormDirty] = useState(false);
-  const [providerModels, setProviderModels] = useState<Record<string, string[]>>({});
+  const [providerModels, setProviderModels] = useState<
+    Record<string, string[]>
+  >({});
   const [loadingModels, setLoadingModels] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<"ok" | "fail" | null>(null);
@@ -101,7 +105,10 @@ export default function SettingsPanel({ onClose }: Props) {
 
   useEffect(() => {
     const activeProvider = providers.find((p) => p.id === activeProviderId);
-    if (!activeProvider) { setProviderOnline(null); return; }
+    if (!activeProvider) {
+      setProviderOnline(null);
+      return;
+    }
 
     const check = async () => {
       const ok = await window.api.checkProvider(activeProvider);
@@ -110,12 +117,20 @@ export default function SettingsPanel({ onClose }: Props) {
 
     check();
     pollIntervalRef.current = setInterval(check, 15_000);
-    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
   }, [activeProviderId, providers]);
 
   // ── LlamaCpp install state ───────────────────────────────────
-  type LlamaInstallPhase = "idle" | "checking" | "installing" | "done" | "error";
-  const [llamaInstallPhase, setLlamaInstallPhase] = useState<LlamaInstallPhase>("idle");
+  type LlamaInstallPhase =
+    | "idle"
+    | "checking"
+    | "installing"
+    | "done"
+    | "error";
+  const [llamaInstallPhase, setLlamaInstallPhase] =
+    useState<LlamaInstallPhase>("idle");
   const [llamaInstallProgress, setLlamaInstallProgress] = useState(0);
   const [llamaInstallLabel, setLlamaInstallLabel] = useState("");
   const [llamaModelPath, setLlamaModelPath] = useState("");
@@ -130,7 +145,9 @@ export default function SettingsPanel({ onClose }: Props) {
 
   const [skills, setSkills] = useState<PluginSkill[]>([]);
   const [mcps, setMcps] = useState<PluginMCP[]>([]);
-  const [editingPlugin, setEditingPlugin] = useState<PluginSkill | PluginMCP | null>(null);
+  const [editingPlugin, setEditingPlugin] = useState<
+    PluginSkill | PluginMCP | null
+  >(null);
   const [editArgs, setEditArgs] = useState("");
   const [editEnv, setEditEnv] = useState("");
   const [isNewPlugin, setIsNewPlugin] = useState(false);
@@ -158,7 +175,10 @@ export default function SettingsPanel({ onClose }: Props) {
         .filter((l) => l.includes("="))
         .map((l) => {
           const idx = l.indexOf("=");
-          return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()] as [string, string];
+          return [l.slice(0, idx).trim(), l.slice(idx + 1).trim()] as [
+            string,
+            string,
+          ];
         }),
     );
 
@@ -197,12 +217,15 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   const handleCloneSkill = (skill: PluginSkill) => {
-    openEditForm({
-      ...skill,
-      id: `${skill.id}-copy`,
-      name: `${skill.name} (Bản sao)`,
-      builtin: false,
-    }, true);
+    openEditForm(
+      {
+        ...skill,
+        id: `${skill.id}-copy`,
+        name: `${skill.name} (Bản sao)`,
+        builtin: false,
+      },
+      true,
+    );
   };
 
   useEffect(() => {
@@ -271,7 +294,7 @@ export default function SettingsPanel({ onClose }: Props) {
     }
     const provider: AIProvider = {
       id: "llamacpp-local",
-      name: "AI local",
+      name: "local",
       baseUrl: "http://localhost:8080/v1",
       apiKey: "",
     };
@@ -420,7 +443,9 @@ export default function SettingsPanel({ onClose }: Props) {
   };
 
   const [exporting, setExporting] = useState(false);
-  const [exportResult, setExportResult] = useState<"ok" | "cancel" | null>(null);
+  const [exportResult, setExportResult] = useState<"ok" | "cancel" | null>(
+    null,
+  );
 
   const handleExportLogs = async () => {
     setExporting(true);
@@ -441,8 +466,12 @@ export default function SettingsPanel({ onClose }: Props) {
       <div className="border p-4 space-y-3 bg-muted/30 my-2">
         <h4 className="text-sm font-semibold">
           {isNewPlugin
-            ? isMcp ? "Thêm MCP Server mới" : "Thêm Skill mới"
-            : isMcp ? "Cập nhật MCP Server" : "Cập nhật Skill"}
+            ? isMcp
+              ? "Thêm MCP Server mới"
+              : "Thêm Skill mới"
+            : isMcp
+              ? "Cập nhật MCP Server"
+              : "Cập nhật Skill"}
         </h4>
 
         {!isMcp && (
@@ -580,7 +609,11 @@ export default function SettingsPanel({ onClose }: Props) {
         )}
 
         <div className="flex gap-2 justify-end pt-1">
-          <Button variant="ghost" size="sm" onClick={() => setEditingPlugin(null)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setEditingPlugin(null)}
+          >
             Huỷ
           </Button>
           <Button size="sm" onClick={handleSavePlugin} disabled={!canSave}>
@@ -595,7 +628,9 @@ export default function SettingsPanel({ onClose }: Props) {
   const viewedProvider = viewedProviderId
     ? providers.find((p) => p.id === viewedProviderId)
     : null;
-  const viewedModels = viewedProviderId ? (providerModels[viewedProviderId] ?? []) : [];
+  const viewedModels = viewedProviderId
+    ? (providerModels[viewedProviderId] ?? [])
+    : [];
   const viewedSelectedModel =
     viewedProviderId === activeProviderId
       ? selectedModel
@@ -629,11 +664,9 @@ export default function SettingsPanel({ onClose }: Props) {
           </TabsList>
 
           <div className="overflow-y-auto mt-2 flex-1 min-h-0">
-
             {/* ── Tab: Connection ── */}
             <TabsContent value="connection">
               <div className="flex gap-0 min-h-72">
-
                 {/* Left: provider list */}
                 <div className="w-52 shrink-0 flex flex-col pr-3">
                   <div className="flex gap-1.5 mb-3">
@@ -650,9 +683,11 @@ export default function SettingsPanel({ onClose }: Props) {
                     {providers.map((p) => {
                       const isActive = p.id === activeProviderId;
                       const isOffline = isActive && providerOnline === false;
-                      const isViewed = p.id === viewedProviderId && !isNewProvider;
+                      const isViewed =
+                        p.id === viewedProviderId && !isNewProvider;
                       const displayModel =
-                        p.selectedModel ?? (isActive ? selectedModel : undefined);
+                        p.selectedModel ??
+                        (isActive ? selectedModel : undefined);
                       return (
                         <button
                           key={p.id}
@@ -667,7 +702,10 @@ export default function SettingsPanel({ onClose }: Props) {
                               {p.name || "(chưa đặt tên)"}
                             </span>
                             {isOffline && (
-                              <AlertTriangle size={10} className="text-destructive shrink-0" />
+                              <AlertTriangle
+                                size={10}
+                                className="text-destructive shrink-0"
+                              />
                             )}
                           </div>
                           {displayModel && (
@@ -696,13 +734,17 @@ export default function SettingsPanel({ onClose }: Props) {
                     /* ── LlamaCpp detail panel ── */
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold">AI local (llama.cpp)</h4>
+                        <h4 className="text-sm font-semibold">
+                          AI local (llama.cpp)
+                        </h4>
                         {providers.length > 1 && (
                           <Button
                             variant="ghost"
                             size="icon-sm"
                             className="text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteProvider("llamacpp-local")}
+                            onClick={() =>
+                              handleDeleteProvider("llamacpp-local")
+                            }
                           >
                             <Trash2 size={13} />
                           </Button>
@@ -710,35 +752,53 @@ export default function SettingsPanel({ onClose }: Props) {
                       </div>
 
                       {llamaInstallPhase === "checking" && (
-                        <p className="text-xs text-muted-foreground">Đang kiểm tra...</p>
+                        <p className="text-xs text-muted-foreground">
+                          Đang kiểm tra...
+                        </p>
                       )}
 
-                      {(llamaInstallPhase === "idle" || llamaInstallPhase === "error") && (
+                      {(llamaInstallPhase === "idle" ||
+                        llamaInstallPhase === "error") && (
                         <>
                           <p className="text-xs text-muted-foreground">
-                            Chưa cài đặt. Ứng dụng sẽ tải xuống llama.cpp và mô hình Gemma 4 (~3GB).
+                            Chưa cài đặt. Ứng dụng sẽ tải xuống llama.cpp và mô
+                            hình Gemma 4 (~3GB).
                           </p>
                           <div className="space-y-1">
-                            <Label className="text-xs">Thư mục lưu mô hình</Label>
+                            <Label className="text-xs">
+                              Thư mục lưu mô hình
+                            </Label>
                             <div className="flex gap-2">
                               <div className="flex items-center gap-2 flex-1 p-2 bg-background border rounded-md min-w-0">
-                                <Folder size={12} className="text-muted-foreground shrink-0" />
+                                <Folder
+                                  size={12}
+                                  className="text-muted-foreground shrink-0"
+                                />
                                 <span className="text-xs font-mono text-muted-foreground truncate">
                                   {llamaModelPath}
                                 </span>
                               </div>
-                              <Button variant="outline" size="sm" onClick={handlePickLlamaModelDir}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handlePickLlamaModelDir}
+                              >
                                 Đổi
                               </Button>
                             </div>
                           </div>
                           {llamaInstallPhase === "error" && (
                             <p className="flex items-center gap-1 text-xs text-destructive">
-                              <XCircle size={12} /> Cài đặt thất bại. Kiểm tra mạng và thử lại.
+                              <XCircle size={12} /> Cài đặt thất bại. Kiểm tra
+                              mạng và thử lại.
                             </p>
                           )}
                           <div className="flex gap-2 pt-1">
-                            <Button size="sm" className="flex-1" onClick={handleLlamaInstall}>
+                            <Button
+                              size="sm"
+                              className="flex-1"
+                              onClick={handleLlamaInstall}
+                            >
                               Bắt đầu cài đặt
                             </Button>
                           </div>
@@ -747,7 +807,9 @@ export default function SettingsPanel({ onClose }: Props) {
 
                       {llamaInstallPhase === "installing" && (
                         <div className="space-y-2">
-                          <p className="text-xs text-muted-foreground">{llamaInstallLabel}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {llamaInstallLabel}
+                          </p>
                           <div className="w-full bg-muted rounded-full h-2">
                             <div
                               className="bg-primary h-2 rounded-full transition-all duration-300"
@@ -763,12 +825,15 @@ export default function SettingsPanel({ onClose }: Props) {
                       {llamaInstallPhase === "done" && (
                         <>
                           <p className="flex items-center gap-1 text-xs text-primary">
-                            <CheckCircle2 size={13} /> Đã cài đặt — sẵn sàng sử dụng
+                            <CheckCircle2 size={13} /> Đã cài đặt — sẵn sàng sử
+                            dụng
                           </p>
                           <div className="border-t pt-2 space-y-1">
                             <Label className="text-xs">Mô hình</Label>
                             {loadingModels ? (
-                              <p className="text-xs text-muted-foreground">Đang tải...</p>
+                              <p className="text-xs text-muted-foreground">
+                                Đang tải...
+                              </p>
                             ) : viewedModels.length === 0 ? (
                               <p className="text-xs text-muted-foreground">
                                 Chưa có model — thử khởi động & kiểm tra
@@ -785,10 +850,14 @@ export default function SettingsPanel({ onClose }: Props) {
                                       name="llama-model"
                                       value={m}
                                       checked={m === viewedSelectedModel}
-                                      onChange={() => handleSelectModel(m, "llamacpp-local")}
+                                      onChange={() =>
+                                        handleSelectModel(m, "llamacpp-local")
+                                      }
                                       className="accent-primary"
                                     />
-                                    <span className="text-xs font-mono truncate">{m}</span>
+                                    <span className="text-xs font-mono truncate">
+                                      {m}
+                                    </span>
                                   </label>
                                 ))}
                               </div>
@@ -801,7 +870,9 @@ export default function SettingsPanel({ onClose }: Props) {
                               onClick={handleCheckProvider}
                               disabled={checking}
                             >
-                              {checking ? "Đang khởi động..." : "Khởi động & kiểm tra"}
+                              {checking
+                                ? "Đang khởi động..."
+                                : "Khởi động & kiểm tra"}
                             </Button>
                             {checkResult === "ok" && (
                               <span className="flex items-center gap-1 text-xs text-primary">
@@ -818,9 +889,11 @@ export default function SettingsPanel({ onClose }: Props) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleSetActive("llamacpp-local")}
+                                onClick={() =>
+                                  handleSetActive("llamacpp-local")
+                                }
                               >
-                                Đặt làm AI đang dùng
+                                Áp dụng
                               </Button>
                             )}
                             {activeProviderId === "llamacpp-local" && (
@@ -841,16 +914,20 @@ export default function SettingsPanel({ onClose }: Props) {
                             ? "Thêm kết nối mới"
                             : viewedProvider?.name || "Kết nối"}
                         </h4>
-                        {!isNewProvider && viewedProviderId && providers.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteProvider(viewedProviderId)}
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        )}
+                        {!isNewProvider &&
+                          viewedProviderId &&
+                          providers.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() =>
+                                handleDeleteProvider(viewedProviderId)
+                              }
+                            >
+                              <Trash2 size={13} />
+                            </Button>
+                          )}
                       </div>
 
                       {isNewProvider && (
@@ -873,26 +950,58 @@ export default function SettingsPanel({ onClose }: Props) {
 
                       {(
                         [
-                          { label: "Tên", value: formName, setter: setFormName, placeholder: "VD: OpenAI, LM Studio...", mono: false, password: false },
-                          { label: "Địa chỉ", value: formBaseUrl, setter: setFormBaseUrl, placeholder: "https://api.example.com/v1", mono: true, password: false },
-                          { label: "API Key", value: formApiKey, setter: setFormApiKey, placeholder: "Để trống nếu không cần", mono: true, password: true },
+                          {
+                            label: "Tên",
+                            value: formName,
+                            setter: setFormName,
+                            placeholder: "VD: OpenAI, LM Studio...",
+                            mono: false,
+                            password: false,
+                          },
+                          {
+                            label: "Địa chỉ",
+                            value: formBaseUrl,
+                            setter: setFormBaseUrl,
+                            placeholder: "https://api.example.com/v1",
+                            mono: true,
+                            password: false,
+                          },
+                          {
+                            label: "API Key",
+                            value: formApiKey,
+                            setter: setFormApiKey,
+                            placeholder: "Để trống nếu không cần",
+                            mono: true,
+                            password: true,
+                          },
                         ] as const
-                      ).map(({ label, value, setter, placeholder, mono, password }) => (
-                        <div key={label} className="flex items-center gap-3">
-                          <Label className="text-xs w-16 shrink-0">{label}</Label>
-                          <Input
-                            type={password ? "password" : "text"}
-                            value={value}
-                            onChange={(e) => {
-                              setter(e.target.value as never);
-                              setFormDirty(true);
-                              setCheckResult(null);
-                            }}
-                            placeholder={placeholder}
-                            className={`h-8 text-sm ${mono ? "font-mono" : ""}`}
-                          />
-                        </div>
-                      ))}
+                      ).map(
+                        ({
+                          label,
+                          value,
+                          setter,
+                          placeholder,
+                          mono,
+                          password,
+                        }) => (
+                          <div key={label} className="flex items-center gap-3">
+                            <Label className="text-xs w-16 shrink-0">
+                              {label}
+                            </Label>
+                            <Input
+                              type={password ? "password" : "text"}
+                              value={value}
+                              onChange={(e) => {
+                                setter(e.target.value as never);
+                                setFormDirty(true);
+                                setCheckResult(null);
+                              }}
+                              placeholder={placeholder}
+                              className={`h-8 text-sm ${mono ? "font-mono" : ""}`}
+                            />
+                          </div>
+                        ),
+                      )}
 
                       {/* Model list for existing providers */}
                       {!isNewProvider && viewedProviderId && (
@@ -910,7 +1019,9 @@ export default function SettingsPanel({ onClose }: Props) {
                             </Button>
                           </div>
                           {loadingModels ? (
-                            <p className="text-xs text-muted-foreground">Đang tải danh sách model...</p>
+                            <p className="text-xs text-muted-foreground">
+                              Đang tải danh sách model...
+                            </p>
                           ) : viewedModels.length === 0 ? (
                             <p className="text-xs text-muted-foreground">
                               Chưa có model — thử kiểm tra kết nối
@@ -927,10 +1038,14 @@ export default function SettingsPanel({ onClose }: Props) {
                                     name="provider-model"
                                     value={m}
                                     checked={m === viewedSelectedModel}
-                                    onChange={() => handleSelectModel(m, viewedProviderId)}
+                                    onChange={() =>
+                                      handleSelectModel(m, viewedProviderId)
+                                    }
                                     className="accent-primary"
                                   />
-                                  <span className="text-xs font-mono truncate">{m}</span>
+                                  <span className="text-xs font-mono truncate">
+                                    {m}
+                                  </span>
                                 </label>
                               ))}
                             </div>
@@ -970,20 +1085,25 @@ export default function SettingsPanel({ onClose }: Props) {
                             {isNewProvider ? "Thêm" : "Lưu thay đổi"}
                           </Button>
                         )}
-                        {!formDirty && !isNewProvider && viewedProviderId && viewedProviderId !== activeProviderId && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSetActive(viewedProviderId)}
-                          >
-                            Đặt làm AI đang dùng
-                          </Button>
-                        )}
-                        {!formDirty && !isNewProvider && viewedProviderId === activeProviderId && (
-                          <Badge variant="secondary" className="text-xs">
-                            Đang dùng
-                          </Badge>
-                        )}
+                        {!formDirty &&
+                          !isNewProvider &&
+                          viewedProviderId &&
+                          viewedProviderId !== activeProviderId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSetActive(viewedProviderId)}
+                            >
+                              Áp dụng
+                            </Button>
+                          )}
+                        {!formDirty &&
+                          !isNewProvider &&
+                          viewedProviderId === activeProviderId && (
+                            <Badge variant="secondary" className="text-xs">
+                              Đang dùng
+                            </Badge>
+                          )}
                       </div>
                     </div>
                   )}
@@ -1018,13 +1138,19 @@ export default function SettingsPanel({ onClose }: Props) {
                   <TabsList className="w-full">
                     <TabsTrigger value="skills">
                       <Zap size={13} className="mr-1" /> Skills
-                      <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 px-1">
+                      <Badge
+                        variant="secondary"
+                        className="ml-1.5 text-[10px] h-4 px-1"
+                      >
                         {skills.length}
                       </Badge>
                     </TabsTrigger>
                     <TabsTrigger value="mcp">
                       <Server size={13} className="mr-1" /> MCP Servers
-                      <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 px-1">
+                      <Badge
+                        variant="secondary"
+                        className="ml-1.5 text-[10px] h-4 px-1"
+                      >
                         {mcps.length}
                       </Badge>
                     </TabsTrigger>
@@ -1051,23 +1177,33 @@ export default function SettingsPanel({ onClose }: Props) {
                         variant="ghost"
                         size="xs"
                         className="text-primary h-7 shrink-0"
-                        onClick={() => openEditForm({ ...EMPTY_SKILL, id: "" }, true)}
+                        onClick={() =>
+                          openEditForm({ ...EMPTY_SKILL, id: "" }, true)
+                        }
                       >
                         <Plus size={13} className="mr-1" /> Thêm
                       </Button>
                     </div>
-                    {editingPlugin && isSkill(editingPlugin) && renderPluginForm()}
+                    {editingPlugin &&
+                      isSkill(editingPlugin) &&
+                      renderPluginForm()}
                     {(() => {
                       const filtered = skills.filter(
                         (p) =>
                           skillSearch === "" ||
-                          p.name.toLowerCase().includes(skillSearch.toLowerCase()) ||
-                          p.id.toLowerCase().includes(skillSearch.toLowerCase()),
+                          p.name
+                            .toLowerCase()
+                            .includes(skillSearch.toLowerCase()) ||
+                          p.id
+                            .toLowerCase()
+                            .includes(skillSearch.toLowerCase()),
                       );
                       if (filtered.length === 0)
                         return (
                           <p className="text-xs text-muted-foreground italic py-1">
-                            {skillSearch ? "Không tìm thấy skill phù hợp." : "Chưa có skill nào."}
+                            {skillSearch
+                              ? "Không tìm thấy skill phù hợp."
+                              : "Chưa có skill nào."}
                           </p>
                         );
                       return filtered.map((p) => (
@@ -1077,7 +1213,9 @@ export default function SettingsPanel({ onClose }: Props) {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-sm truncate">{p.name}</span>
+                              <span className="font-medium text-sm truncate">
+                                {p.name}
+                              </span>
                               <span className="font-mono text-[10px] text-muted-foreground">
                                 /{p.id}
                               </span>
@@ -1089,7 +1227,9 @@ export default function SettingsPanel({ onClose }: Props) {
                                   size="icon-sm"
                                   className="text-primary"
                                   title="Tạo bản sao"
-                                  onClick={() => handleCloneSkill(p as PluginSkill)}
+                                  onClick={() =>
+                                    handleCloneSkill(p as PluginSkill)
+                                  }
                                 >
                                   <Copy size={12} />
                                 </Button>
@@ -1116,7 +1256,9 @@ export default function SettingsPanel({ onClose }: Props) {
                             </div>
                           </div>
                           {p.description && (
-                            <p className="text-xs text-muted-foreground">{p.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {p.description}
+                            </p>
                           )}
                         </div>
                       ));
@@ -1144,19 +1286,29 @@ export default function SettingsPanel({ onClose }: Props) {
                         variant="ghost"
                         size="xs"
                         className="text-primary h-7 shrink-0"
-                        onClick={() => openEditForm({ ...EMPTY_MCP, id: "" }, true)}
+                        onClick={() =>
+                          openEditForm({ ...EMPTY_MCP, id: "" }, true)
+                        }
                       >
                         <Plus size={13} className="mr-1" /> Thêm
                       </Button>
                     </div>
-                    {editingPlugin && !isSkill(editingPlugin) && renderPluginForm()}
+                    {editingPlugin &&
+                      !isSkill(editingPlugin) &&
+                      renderPluginForm()}
                     {(() => {
                       const filtered = mcps.filter(
                         (p) =>
                           mcpSearch === "" ||
-                          p.id.toLowerCase().includes(mcpSearch.toLowerCase()) ||
-                          (p.url ?? "").toLowerCase().includes(mcpSearch.toLowerCase()) ||
-                          (p.command ?? "").toLowerCase().includes(mcpSearch.toLowerCase()),
+                          p.id
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()) ||
+                          (p.url ?? "")
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()) ||
+                          (p.command ?? "")
+                            .toLowerCase()
+                            .includes(mcpSearch.toLowerCase()),
                       );
                       if (filtered.length === 0)
                         return (
@@ -1173,7 +1325,9 @@ export default function SettingsPanel({ onClose }: Props) {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-sm font-mono truncate">{p.id}</span>
+                              <span className="font-medium text-sm font-mono truncate">
+                                {p.id}
+                              </span>
                               {(p.command || p.url) && (
                                 <Badge
                                   variant="outline"
@@ -1215,10 +1369,15 @@ export default function SettingsPanel({ onClose }: Props) {
               <div className="border rounded-xl p-4 space-y-3">
                 <h3 className="text-sm font-semibold">Logs ứng dụng</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  File log ghi lại toàn bộ hoạt động của ứng dụng. Gửi file này khi báo lỗi.
+                  File log ghi lại toàn bộ hoạt động của ứng dụng. Gửi file này
+                  khi báo lỗi.
                 </p>
                 <div className="flex items-center gap-3">
-                  <Button variant="secondary" onClick={handleExportLogs} disabled={exporting}>
+                  <Button
+                    variant="secondary"
+                    onClick={handleExportLogs}
+                    disabled={exporting}
+                  >
                     {exporting ? "Đang xuất..." : "Tải xuống logs"}
                   </Button>
                   {exportResult === "ok" && (
@@ -1227,7 +1386,9 @@ export default function SettingsPanel({ onClose }: Props) {
                     </span>
                   )}
                   {exportResult === "cancel" && (
-                    <span className="text-xs text-muted-foreground">Đã huỷ</span>
+                    <span className="text-xs text-muted-foreground">
+                      Đã huỷ
+                    </span>
                   )}
                 </div>
               </div>

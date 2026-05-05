@@ -118,6 +118,146 @@ function snapshotItems(
   return result
 }
 
+function modelMessagesToItems(messages: ModelMessage[]): ChatUIBlock[] {
+  const chatItems: ChatUIBlock[] = []
+  let i = 0
+
+  while (i < messages.length) {
+    const msg = messages[i]
+
+    if (msg.role === "user") {
+      chatItems.push({
+        type: "message",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: typeof msg.content === "string" ? msg.content : "",
+          },
+        ],
+      })
+      i++
+      continue
+    }
+
+    if (msg.role === "assistant") {
+      const content = msg.content
+
+      // AssistantContent can be a plain string
+      if (typeof content === "string") {
+        if (content)
+          chatItems.push({
+            type: "message",
+            role: "assistant",
+            parts: [{ type: "text", text: content }],
+          })
+        i++
+        continue
+      }
+
+      const toolCallParts: Array<ToolCallPart> = []
+      for (const part of content) {
+        if (part.type === "reasoning") {
+          chatItems.push({
+            type: "reasoning",
+            id: `r-${++_reasoningCounter}`,
+            content: (part as ReasoningUIPart).text,
+          })
+        } else if (part.type === "text") {
+          if (part.text)
+            chatItems.push({
+              type: "message",
+              role: "assistant",
+              parts: [{ type: "text", text: part.text }],
+            })
+        } else if (part.type === "tool-call") {
+          toolCallParts.push(part as ToolCallPart)
+        }
+      }
+
+      if (toolCallParts.length > 0) {
+        const nextMsg = messages[i + 1]
+        const toolResults = nextMsg?.role === "tool" ? nextMsg.content : []
+        for (const tcPart of toolCallParts) {
+          const resultPart = toolResults.find(
+            (r): r is ToolResultPart =>
+              r.type === "tool-result" && r.toolCallId === tcPart.toolCallId,
+          )
+          chatItems.push({
+            type: "tool-use",
+            id: `tc-${++_toolCallCounter}`,
+            toolName: tcPart.toolName,
+            label:
+              (tcPart.providerOptions?.["agenteach"]?.["label"] as
+                | string
+                | undefined) ?? tcPart.toolName,
+            input: tcPart.input as Record<string, unknown>,
+            output: resultPart?.output as ToolUseOutput,
+          })
+        }
+        i += nextMsg?.role === "tool" ? 2 : 1
+      } else {
+        i++
+      }
+      continue
+    }
+
+    // tool messages are consumed above; system messages are hidden context.
+    i++
+  }
+
+  return chatItems
+}
+
+function itemsToModelMessages(items: ChatUIBlock[]): ModelMessage[] {
+  const result: ModelMessage[] = []
+  let i = 0
+  let tcCounter = 0
+
+  while (i < items.length) {
+    const item = items[i]
+
+    if (item.type === "message" && item.role === "user") {
+      const text = item.parts.find((p) => p.type === "text")
+      result.push({ role: "user", content: text?.text ?? "" })
+      i++
+      continue
+    }
+
+    if (item.type === "reasoning" || item.type === "message" || item.type === "tool-use") {
+      const parts: Array<TextPart | FilePart | ToolCallPart> = []
+
+      while (i < items.length && items[i].type === "reasoning") i++
+
+      if (i < items.length && items[i].type === "message" && (items[i] as MessageUIBlock).role === "assistant") {
+        const msg = items[i] as MessageUIBlock
+        const text = msg.parts.find((p) => p.type === "text")
+        if (text?.text) parts.push({ type: "text", text: text.text })
+        i++
+      }
+
+      if (i < items.length && items[i].type === "tool-use") {
+        const tc = items[i] as ToolUseUIBlock
+        const tcId = `hist-${++tcCounter}`
+        parts.push({ type: "tool-call", toolCallId: tcId, toolName: tc.toolName, input: tc.input })
+        result.push({ role: "assistant", content: parts })
+        result.push({
+          role: "tool",
+          content: [{ type: "tool-result", toolCallId: tcId, toolName: tc.toolName, output: { type: "text", value: tc.output?.value ?? "" } }],
+        })
+        i++
+      } else if (parts.length > 0) {
+        result.push({ role: "assistant", content: parts })
+      }
+      continue
+    }
+
+    i++
+  }
+
+  return result
+}
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -130,82 +270,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   savedMessageCount: 0,
 
   toModelMessages(): ModelMessage[] {
-    const result: ModelMessage[] = []
-    const items = get().items
-    let i = 0
-    let tcCounter = 0
-
-    while (i < items.length) {
-      const item = items[i]
-
-      if (item.type === "message" && item.role === "user") {
-        const text = item.parts.find((p) => p.type === "text")
-        result.push({ role: "user", content: text?.text ?? "" })
-        i++
-        continue
-      }
-
-      // Collect a step: reasoning* + assistant? + tool-use?
-      if (
-        item.type === "reasoning" ||
-        item.type === "message" ||
-        item.type === "tool-use"
-      ) {
-        const parts: Array<TextPart | FilePart | ToolCallPart> = []
-
-        // Skip reasoning blocks — display-only, not sent to LLM
-        while (i < items.length && items[i].type === "reasoning") {
-          i++
-        }
-
-        // Collect assistant text
-        if (
-          i < items.length &&
-          items[i].type === "message" &&
-          (items[i] as MessageUIBlock).role === "assistant"
-        ) {
-          const msg = items[i] as MessageUIBlock
-          const text = msg.parts.find((p) => p.type === "text")
-          if (text?.text) parts.push({ type: "text", text: text.text })
-          i++
-        }
-
-        // Check for following tool-use block
-        if (i < items.length && items[i].type === "tool-use") {
-          const tc = items[i] as ToolUseUIBlock
-          const tcId = `hist-${++tcCounter}`
-          parts.push({
-            type: "tool-call",
-            toolCallId: tcId,
-            toolName: tc.toolName,
-            input: tc.input,
-          })
-          result.push({ role: "assistant", content: parts })
-          result.push({
-            role: "tool",
-            content: [
-              {
-                type: "tool-result",
-                toolCallId: tcId,
-                toolName: tc.toolName,
-                output: {
-                  type: "text",
-                  value: tc.output?.value ?? "",
-                },
-              },
-            ],
-          })
-          i++
-        } else if (parts.length > 0) {
-          result.push({ role: "assistant", content: parts })
-        }
-        continue
-      }
-
-      i++
-    }
-
-    return result
+    return itemsToModelMessages(get().items)
   },
 
   addUserMessage: (content) =>
@@ -306,95 +371,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   markSaved: (count) => set({ savedMessageCount: count }),
 
   loadItems: (messages) => {
-    const chatItems: ChatUIBlock[] = []
-    let i = 0
-
-    while (i < messages.length) {
-      const msg = messages[i]
-
-      if (msg.role === "user") {
-        chatItems.push({
-          type: "message",
-          role: "user",
-          parts: [
-            {
-              type: "text",
-              text: typeof msg.content === "string" ? msg.content : "",
-            },
-          ],
-        })
-        i++
-        continue
-      }
-
-      if (msg.role === "assistant") {
-        const content = msg.content
-
-        // AssistantContent can be a plain string
-        if (typeof content === "string") {
-          if (content)
-            chatItems.push({
-              type: "message",
-              role: "assistant",
-              parts: [{ type: "text", text: content }],
-            })
-          i++
-          continue
-        }
-
-        const toolCallParts: Array<ToolCallPart> = []
-        for (const part of content) {
-          if (part.type === "reasoning") {
-            chatItems.push({
-              type: "reasoning",
-              id: `r-${++_reasoningCounter}`,
-              content: (part as ReasoningUIPart).text,
-            })
-          } else if (part.type === "text") {
-            if (part.text)
-              chatItems.push({
-                type: "message",
-                role: "assistant",
-                parts: [{ type: "text", text: part.text }],
-              })
-          } else if (part.type === "tool-call") {
-            toolCallParts.push(part as ToolCallPart)
-          }
-        }
-
-        if (toolCallParts.length > 0) {
-          const nextMsg = messages[i + 1]
-          const toolResults = nextMsg?.role === "tool" ? nextMsg.content : []
-          for (const tcPart of toolCallParts) {
-            const resultPart = toolResults.find(
-              (r): r is ToolResultPart =>
-                r.type === "tool-result" && r.toolCallId === tcPart.toolCallId,
-            )
-            chatItems.push({
-              type: "tool-use",
-              id: `tc-${++_toolCallCounter}`,
-              toolName: tcPart.toolName,
-              label:
-                (tcPart.providerOptions?.["agenteach"]?.["label"] as
-                  | string
-                  | undefined) ?? tcPart.toolName,
-              input: tcPart.input as Record<string, unknown>,
-              output: resultPart?.output as ToolUseOutput,
-            })
-          }
-          i += nextMsg?.role === "tool" ? 2 : 1
-        } else {
-          i++
-        }
-        continue
-      }
-
-      // tool messages are consumed above
-      i++
-    }
-
     set({
-      items: chatItems,
+      items: modelMessagesToItems(messages),
       streamingContent: "",
       reasoningContent: "",
       pendingItems: [],

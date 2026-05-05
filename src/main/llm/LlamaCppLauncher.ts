@@ -1,45 +1,50 @@
-import { spawn } from "node:child_process"
-import path from "node:path"
-import { appConfig } from "../config/AppConfig"
-import { getLlamaServerPath, getInstallStatus } from "./LlamaCppInstaller"
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { appConfig } from "../config/AppConfig";
+import { getLlamaServerPath, getInstallStatus } from "./LlamaCppInstaller";
 
-const LLAMACPP_PORT = 8080
-const HEALTH_URL = `http://127.0.0.1:${LLAMACPP_PORT}/v1/models`
+const LLAMACPP_PORT = 8080;
+const HEALTH_URL = `http://127.0.0.1:${LLAMACPP_PORT}/v1/models`;
 
-let llamaProcess: ReturnType<typeof spawn> | null = null
+let llamaProcess: ReturnType<typeof spawn> | null = null;
 
 async function isServerRunning(): Promise<boolean> {
   try {
-    const res = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(2000) })
-    return res.ok
+    const res = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(2000) });
+    return res.ok;
   } catch {
-    return false
+    return false;
   }
 }
 
 async function waitForServer(timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await isServerRunning()) return
-    await new Promise((r) => setTimeout(r, 500))
+    if (await isServerRunning()) return;
+    await new Promise((r) => setTimeout(r, 500));
   }
 }
 
 export async function tryStartLlamaCpp(): Promise<void> {
-  if (await isServerRunning()) return
+  if (await isServerRunning()) return;
 
-  const modelPath = appConfig.get().localModelPath
-  const { llamacppReady, modelReady } = getInstallStatus(modelPath || undefined)
-  if (!llamacppReady || !modelReady) return
+  const modelPath = appConfig.get().localModelPath;
+  const { llamacppReady, modelReady } = getInstallStatus(
+    modelPath || undefined,
+  );
+  if (!llamacppReady || !modelReady) return;
 
-  const bin = getLlamaServerPath()
+  const bin = getLlamaServerPath();
+  const modelAlias = path
+    .basename(modelPath, path.extname(modelPath))
+    .replace(/(?:[-_](?:it|Q\d+[_A-Z0-9]*))+$/i, "");
   llamaProcess = spawn(
     bin,
     [
       "--model",
       modelPath,
       "--alias",
-      path.basename(modelPath, path.extname(modelPath)),
+      modelAlias,
       "--port",
       String(LLAMACPP_PORT),
       "--host",
@@ -48,13 +53,13 @@ export async function tryStartLlamaCpp(): Promise<void> {
       // "4096",
     ],
     { detached: false, stdio: "ignore" },
-  )
-  llamaProcess.unref()
+  );
+  llamaProcess.unref();
 
-  await waitForServer(30_000)
+  await waitForServer(30_000);
 }
 
 export function killLlamaCppProcess(): void {
-  llamaProcess?.kill()
-  llamaProcess = null
+  llamaProcess?.kill();
+  llamaProcess = null;
 }

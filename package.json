@@ -1,7 +1,7 @@
 {
   "name": "agenteach",
   "productName": "Agenteach",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Trợ lý AI cá nhân dành cho giáo viên",
   "main": ".vite/build/main.js",
   "private": true,

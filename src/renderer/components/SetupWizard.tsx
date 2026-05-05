@@ -436,7 +436,7 @@ export default function SetupWizard({ onComplete }: Props) {
                       <div className="flex items-center gap-2 flex-1 py-2 px-2.5 bg-muted/40 border border-border min-w-0">
                         <Folder size={13} className="text-muted-foreground shrink-0" />
                         <span className="text-xs font-mono text-muted-foreground truncate">
-                          {effectiveModelPath()}
+                          {modelDir || dataRoot + "/models"}
                         </span>
                       </div>
                       <Button

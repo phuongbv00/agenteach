@@ -49,6 +49,11 @@ export async function runAgent(
 
   const memory = MemoryStore.load();
   const systemPrompt = buildSystemPrompt(memory, workspace);
+  const provider =
+    config.providers.find((p) => p.id === config.activeProviderId) ??
+    config.providers[0] ??
+    null;
+  const selectedModel = model ?? config.selectedModel;
 
   const index = getWorkspaceIndex(workspace.id, workspace.path);
 
@@ -70,7 +75,7 @@ export async function runAgent(
   };
 
   const agent = new ToolLoopAgent({
-    model: createModel(model ?? config.selectedModel),
+    model: createModel(selectedModel, provider ?? undefined),
     instructions: systemPrompt,
     tools: { ...fileTools, ...memoryTools, ...pluginTools, ...timeTools },
     stopWhen: isLoopFinished(),

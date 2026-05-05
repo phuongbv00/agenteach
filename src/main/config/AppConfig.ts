@@ -32,7 +32,7 @@ export interface AppConfigData {
 
 const DEFAULT_LLAMACPP_PROVIDER: AIProvider = {
   id: "llamacpp-local",
-  name: "AI local",
+  name: "local",
   baseUrl: "http://localhost:8080/v1",
   apiKey: "",
 }
@@ -42,7 +42,7 @@ const DEFAULTS: AppConfigData = {
   subject: "",
   providers: [DEFAULT_LLAMACPP_PROVIDER],
   activeProviderId: "llamacpp-local",
-  selectedModel: "gemma-4-E2B-it-Q4_K_M",
+  selectedModel: "gemma-4-E2B",
   localModelPath: "",
   activeWorkspaceId: null,
   alwaysPermissions: [],

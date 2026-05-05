@@ -52,7 +52,6 @@ export default function ChatPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items, streamingContent, reasoningContent, pendingItems]);
@@ -67,6 +66,7 @@ export default function ChatPanel() {
     ) {
       const all = toModelMessages();
       const newMessages = all.slice(savedMessageCount);
+
       if (newMessages.length > 0) {
         window.api
           .appendSessionMessages(
@@ -75,7 +75,9 @@ export default function ChatPanel() {
             newMessages,
             savedMessageCount,
           )
-          .then(() => markSaved(all.length));
+          .then(() => {
+            markSaved(all.length);
+          });
       }
     }
   }, [isStreaming]);
@@ -117,6 +119,7 @@ export default function ChatPanel() {
     const content = mentionPrefix
       ? mentionPrefix + (text ? "\n" + text : "")
       : text;
+    const historyMessages = toModelMessages();
 
     setInput("");
     setMentionedFiles([]);
@@ -127,7 +130,7 @@ export default function ChatPanel() {
     setStreaming(true);
 
     const allMessages = [
-      ...toModelMessages(),
+      ...historyMessages,
       { role: "user" as const, content },
     ];
     window.api
